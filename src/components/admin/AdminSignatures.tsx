@@ -35,7 +35,7 @@ export function AdminSignatures() {
   const [selectedEvent, setSelectedEvent] = useState<string>('')
   const [searchQuery, setSearchQuery] = useState('')
   const [generatingPdf, setGeneratingPdf] = useState<string | null>(null)
-  const { session } = useAuth()
+  useAuth() // Ensure user is authenticated
 
   useEffect(() => {
     fetchEvents()
@@ -86,11 +86,19 @@ export function AdminSignatures() {
     setGeneratingPdf(signatureId)
 
     try {
+      // Get fresh session to ensure valid JWT
+      const { data: { session: freshSession } } = await supabase.auth.getSession()
+      
+      if (!freshSession?.access_token) {
+        alert('Du må være logget inn for å generere PDF')
+        return
+      }
+
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-nda-pdf`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.access_token}`,
+          'Authorization': `Bearer ${freshSession.access_token}`,
           'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
         },
         body: JSON.stringify({ signature_id: signatureId }),
