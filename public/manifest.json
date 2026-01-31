@@ -2,7 +2,7 @@
   "name": "NDA Signering",
   "short_name": "NDA Sign",
   "description": "NDA Signering for Nordic Lifestyle Events",
-  "start_url": "/kiosk",
+  "start_url": "/login",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#581c87",
