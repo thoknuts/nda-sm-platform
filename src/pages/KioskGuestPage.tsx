@@ -573,7 +573,7 @@ export function KioskGuestPage() {
           </div>
         )}
 
-        <div className="w-full max-w-4xl">
+        <div className="w-full max-w-5xl">
           {/* Language Selection */}
         {step === 'language' && (
           <Card className="text-center">
