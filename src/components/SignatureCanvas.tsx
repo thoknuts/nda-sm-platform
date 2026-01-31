@@ -30,7 +30,7 @@ export function SignatureCanvas({ onSave, onClear, language }: SignatureCanvasPr
         const canvas = sigPadRef.current.getCanvas()
         const ratio = Math.max(window.devicePixelRatio || 1, 1)
         const width = containerRef.current.offsetWidth
-        const height = 200
+        const height = 300
         canvas.width = width * ratio
         canvas.height = height * ratio
         canvas.style.width = `${width}px`
@@ -68,7 +68,7 @@ export function SignatureCanvas({ onSave, onClear, language }: SignatureCanvasPr
           ref={sigPadRef}
           canvasProps={{
             className: 'w-full touch-none',
-            style: { height: '200px' },
+            style: { height: '300px' },
           }}
           penColor="#000000"
           minWidth={1.5}

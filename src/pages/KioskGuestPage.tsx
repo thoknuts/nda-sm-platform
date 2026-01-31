@@ -100,18 +100,17 @@ function SuccessScreen({ onReset, t }: { onReset: () => void; t: typeof translat
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setCountdown(prev => {
-        if (prev <= 1) {
-          clearInterval(timer)
-          onReset()
-          return 0
-        }
-        return prev - 1
-      })
+      setCountdown(prev => prev - 1)
     }, 1000)
 
     return () => clearInterval(timer)
-  }, [onReset])
+  }, [])
+
+  useEffect(() => {
+    if (countdown <= 0) {
+      onReset()
+    }
+  }, [countdown, onReset])
 
   return (
     <Card className="text-center">
