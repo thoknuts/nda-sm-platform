@@ -94,6 +94,40 @@ const translations = {
   },
 }
 
+// Success screen with auto-redirect after 5 seconds
+function SuccessScreen({ onReset, t }: { onReset: () => void; t: typeof translations['no'] }) {
+  const [countdown, setCountdown] = useState(5)
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCountdown(prev => {
+        if (prev <= 1) {
+          clearInterval(timer)
+          onReset()
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+
+    return () => clearInterval(timer)
+  }, [onReset])
+
+  return (
+    <Card className="text-center">
+      <CardContent>
+        <div className="text-green-600 text-6xl mb-4">✓</div>
+        <h2 className="text-3xl font-bold mb-2">{t.success}</h2>
+        <p className="text-gray-600 mb-4">{t.waitingVerification}</p>
+        <p className="text-gray-400 text-sm mb-6">Går til ny registrering om {countdown} sekunder...</p>
+        <Button onClick={onReset} size="lg">
+          {t.newGuest}
+        </Button>
+      </CardContent>
+    </Card>
+  )
+}
+
 export function KioskGuestPage() {
   const { eventId } = useParams<{ eventId: string }>()
   const navigate = useNavigate()
@@ -540,7 +574,7 @@ export function KioskGuestPage() {
           </div>
         )}
 
-        <div className="w-full max-w-2xl">
+        <div className="w-full max-w-4xl">
           {/* Language Selection */}
         {step === 'language' && (
           <Card className="text-center">
@@ -782,18 +816,7 @@ export function KioskGuestPage() {
         )}
 
         {/* Success */}
-        {step === 'success' && (
-          <Card className="text-center">
-            <CardContent>
-              <div className="text-green-600 text-6xl mb-4">✓</div>
-              <h2 className="text-3xl font-bold mb-2">{t.success}</h2>
-              <p className="text-gray-600 mb-8">{t.waitingVerification}</p>
-              <Button onClick={resetForNewGuest} size="lg">
-                {t.newGuest}
-              </Button>
-            </CardContent>
-          </Card>
-        )}
+        {step === 'success' && <SuccessScreen onReset={resetForNewGuest} t={t} />}
         </div>
       </div>
     </div>
