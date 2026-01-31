@@ -1,0 +1,12 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #7B0577;
+  --color-primary-dark: #5a0458;
+  --color-primary-light: #9c0796;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
