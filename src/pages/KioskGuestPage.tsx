@@ -422,14 +422,15 @@ export function KioskGuestPage() {
   }
 
   return (
-    <div className="min-h-screen p-4 relative" style={{ backgroundColor }}>
-      {/* Logo */}
+    <div className="min-h-screen p-4 relative flex flex-col items-center justify-center" style={{ backgroundColor }}>
+      {/* Logo - positioned above centered content */}
       {appConfig?.logo_url && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40">
+        <div className="mb-6">
           <img 
             src={appConfig.logo_url} 
             alt="Logo" 
-            className="max-h-16 max-w-xs object-contain"
+            style={{ width: '200px' }}
+            className="object-contain"
           />
         </div>
       )}
@@ -534,7 +535,7 @@ export function KioskGuestPage() {
         </div>
       )}
 
-      <div className="max-w-2xl mx-auto pt-16">
+      <div className="w-full max-w-2xl">
         {/* Language Selection */}
         {step === 'language' && (
           <Card className="text-center">
