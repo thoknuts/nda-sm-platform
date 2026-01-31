@@ -2,6 +2,12 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
 
+// Helper to sanitize text for PDF (remove newlines and control characters)
+function sanitizeText(text: string | null | undefined): string {
+  if (!text) return '-'
+  return text.replace(/[\n\r\t\x00-\x1F]/g, ' ').replace(/\s+/g, ' ').trim() || '-'
+}
+
 // Dynamic import for pdf-lib to handle potential loading issues
 let PDFDocument: any, rgb: any, StandardFonts: any
 
@@ -142,32 +148,32 @@ serve(async (req) => {
 
     // Event info
     const event = signature.events as any
-    page.drawText(`Event: ${event.name}`, { x: 50, y, size: 12, font: fontBold })
+    page.drawText(`Event: ${sanitizeText(event.name)}`, { x: 50, y, size: 12, font: fontBold })
     y -= 20
-    page.drawText(`Dato: ${event.event_date}`, { x: 50, y, size: 10, font })
+    page.drawText(`Dato: ${sanitizeText(event.event_date)}`, { x: 50, y, size: 10, font })
     y -= 30
 
     // Guest info
     const guest = signature.guests as any
     page.drawText('Personopplysninger:', { x: 50, y, size: 12, font: fontBold })
     y -= 18
-    page.drawText(`Navn: ${guest.first_name} ${guest.last_name}`, { x: 50, y, size: 10, font })
+    page.drawText(`Navn: ${sanitizeText(guest.first_name)} ${sanitizeText(guest.last_name)}`, { x: 50, y, size: 10, font })
     y -= 15
-    page.drawText(`SpicyMatch brukernavn: ${guest.sm_username || '-'}`, { x: 50, y, size: 10, font })
+    page.drawText(`SpicyMatch brukernavn: ${sanitizeText(guest.sm_username)}`, { x: 50, y, size: 10, font })
     y -= 15
-    page.drawText(`Mobil: ${guest.phone}`, { x: 50, y, size: 10, font })
+    page.drawText(`Mobil: ${sanitizeText(guest.phone)}`, { x: 50, y, size: 10, font })
     y -= 15
-    page.drawText(`E-post: ${guest.email || '-'}`, { x: 50, y, size: 10, font })
+    page.drawText(`E-post: ${sanitizeText(guest.email)}`, { x: 50, y, size: 10, font })
     y -= 15
-    page.drawText(`Sted: ${guest.location || '-'}`, { x: 50, y, size: 10, font })
+    page.drawText(`Sted: ${sanitizeText(guest.location)}`, { x: 50, y, size: 10, font })
     y -= 30
 
     // NDA text
     page.drawText('NDA-tekst:', { x: 50, y, size: 12, font: fontBold })
     y -= 18
 
-    // Word wrap NDA text
-    const ndaText = signature.nda_text_snapshot
+    // Word wrap NDA text - replace newlines with spaces to avoid WinAnsi encoding error
+    const ndaText = (signature.nda_text_snapshot || '').replace(/[\n\r\t]/g, ' ').replace(/\s+/g, ' ').trim()
     const maxWidth = width - 100
     const words = ndaText.split(' ')
     let line = ''
