@@ -14,6 +14,7 @@ interface AppConfig {
   auto_lock_minutes: number
   background_color: string
   logo_url: string | null
+  logo_width: number
 }
 
 export function AdminSettings() {
@@ -27,6 +28,7 @@ export function AdminSettings() {
     auto_lock_minutes: 5,
     background_color: '#581c87',
     logo_url: null as string | null,
+    logo_width: 200,
   })
   const [uploadingLogo, setUploadingLogo] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -52,6 +54,7 @@ export function AdminSettings() {
         auto_lock_minutes: cfg.auto_lock_minutes,
         background_color: cfg.background_color || '#581c87',
         logo_url: cfg.logo_url,
+        logo_width: cfg.logo_width || 200,
       })
     }
     setLoading(false)
@@ -69,6 +72,7 @@ export function AdminSettings() {
         auto_lock_minutes: formData.auto_lock_minutes,
         background_color: formData.background_color,
         logo_url: formData.logo_url,
+        logo_width: formData.logo_width,
         privacy_version: (config?.privacy_version || 0) + 1,
       })
       .eq('id', 1)
@@ -216,10 +220,11 @@ export function AdminSettings() {
                     <img 
                       src={formData.logo_url} 
                       alt="Logo" 
-                      className="max-h-24 max-w-xs object-contain"
+                      style={{ width: `${formData.logo_width}px` }}
+                      className="object-contain"
                     />
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 items-center">
                     <Button 
                       variant="secondary" 
                       onClick={() => fileInputRef.current?.click()}
@@ -233,6 +238,18 @@ export function AdminSettings() {
                     >
                       Slett logo
                     </Button>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm text-gray-600">Bredde:</label>
+                    <input
+                      type="number"
+                      min={50}
+                      max={500}
+                      value={formData.logo_width}
+                      onChange={(e) => setFormData(prev => ({ ...prev, logo_width: parseInt(e.target.value) || 200 }))}
+                      className="w-20 px-2 py-1 border border-gray-300 rounded text-sm"
+                    />
+                    <span className="text-sm text-gray-500">px</span>
                   </div>
                 </div>
               ) : (

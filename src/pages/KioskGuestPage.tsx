@@ -25,6 +25,7 @@ interface AppConfig {
   privacy_version: number
   background_color: string
   logo_url: string | null
+  logo_width: number
 }
 
 interface GuestFormData {
@@ -421,20 +422,10 @@ export function KioskGuestPage() {
     )
   }
 
+  const logoWidth = appConfig?.logo_width || 200
+
   return (
     <div className="min-h-screen p-4 relative flex flex-col items-center justify-center" style={{ backgroundColor }}>
-      {/* Logo - positioned above centered content */}
-      {appConfig?.logo_url && (
-        <div className="mb-6">
-          <img 
-            src={appConfig.logo_url} 
-            alt="Logo" 
-            style={{ width: '200px' }}
-            className="object-contain"
-          />
-        </div>
-      )}
-
       {/* Crew controls - top right corner */}
       <div className="absolute top-4 right-4 flex gap-2 items-center z-50">
         <div className="text-white/60 text-xs mr-2">Kiosk: ON</div>
@@ -535,8 +526,22 @@ export function KioskGuestPage() {
         </div>
       )}
 
-      <div className="w-full max-w-2xl">
-        {/* Language Selection */}
+      {/* Content wrapper - offset upward by 100px */}
+      <div className="flex flex-col items-center" style={{ marginTop: '-100px' }}>
+        {/* Logo */}
+        {appConfig?.logo_url && (
+          <div className="mb-6">
+            <img 
+              src={appConfig.logo_url} 
+              alt="Logo" 
+              style={{ width: `${logoWidth}px` }}
+              className="object-contain"
+            />
+          </div>
+        )}
+
+        <div className="w-full max-w-2xl">
+          {/* Language Selection */}
         {step === 'language' && (
           <Card className="text-center">
             <CardContent>
@@ -789,6 +794,7 @@ export function KioskGuestPage() {
             </CardContent>
           </Card>
         )}
+        </div>
       </div>
     </div>
   )
