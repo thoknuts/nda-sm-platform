@@ -172,28 +172,39 @@ serve(async (req) => {
     page.drawText('NDA-tekst:', { x: 50, y, size: 12, font: fontBold })
     y -= 18
 
-    // Word wrap NDA text - replace newlines with spaces to avoid WinAnsi encoding error
-    const ndaText = (signature.nda_text_snapshot || '').replace(/[\n\r\t]/g, ' ').replace(/\s+/g, ' ').trim()
+    // Split NDA text into paragraphs (double newlines or single newlines)
+    const rawNdaText = signature.nda_text_snapshot || ''
+    const paragraphs = rawNdaText.split(/\n\s*\n|\n/).filter((p: string) => p.trim())
     const maxWidth = width - 100
-    const words = ndaText.split(' ')
-    let line = ''
     const fontSize = 9
 
-    for (const word of words) {
-      const testLine = line + (line ? ' ' : '') + word
-      const textWidth = font.widthOfTextAtSize(testLine, fontSize)
-      if (textWidth > maxWidth) {
+    for (const paragraph of paragraphs) {
+      // Sanitize paragraph text (remove control chars but keep as single paragraph)
+      const cleanParagraph = paragraph.replace(/[\r\t\x00-\x1F]/g, ' ').replace(/\s+/g, ' ').trim()
+      if (!cleanParagraph) continue
+
+      const words = cleanParagraph.split(' ')
+      let line = ''
+
+      for (const word of words) {
+        const testLine = line + (line ? ' ' : '') + word
+        const textWidth = font.widthOfTextAtSize(testLine, fontSize)
+        if (textWidth > maxWidth) {
+          page.drawText(line, { x: 50, y, size: fontSize, font })
+          y -= 12
+          line = word
+          if (y < 200) break // Leave room for signature
+        } else {
+          line = testLine
+        }
+      }
+      if (line && y >= 200) {
         page.drawText(line, { x: 50, y, size: fontSize, font })
         y -= 12
-        line = word
-        if (y < 200) break // Leave room for signature
-      } else {
-        line = testLine
       }
-    }
-    if (line && y >= 200) {
-      page.drawText(line, { x: 50, y, size: fontSize, font })
-      y -= 20
+      // Add extra space between paragraphs
+      y -= 8
+      if (y < 200) break
     }
 
     // Confirmations
