@@ -23,6 +23,8 @@ interface AppConfig {
   privacy_text_no: string
   privacy_text_en: string
   privacy_version: number
+  background_color: string
+  logo_url: string | null
 }
 
 interface GuestFormData {
@@ -386,9 +388,11 @@ export function KioskGuestPage() {
     }
   }
 
+  const backgroundColor = appConfig?.background_color || '#581c87'
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-primary flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor }}>
         <div className="text-white text-xl">Laster...</div>
       </div>
     )
@@ -396,7 +400,7 @@ export function KioskGuestPage() {
 
   if (isLocked) {
     return (
-      <div className="min-h-screen bg-primary flex items-center justify-center p-4">
+      <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor }}>
         <Card className="w-full max-w-md text-center">
           <CardContent>
             <div className="text-6xl mb-4">🔒</div>
@@ -418,7 +422,18 @@ export function KioskGuestPage() {
   }
 
   return (
-    <div className="min-h-screen bg-primary p-4 relative">
+    <div className="min-h-screen p-4 relative" style={{ backgroundColor }}>
+      {/* Logo */}
+      {appConfig?.logo_url && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40">
+          <img 
+            src={appConfig.logo_url} 
+            alt="Logo" 
+            className="max-h-16 max-w-xs object-contain"
+          />
+        </div>
+      )}
+
       {/* Crew controls - top right corner */}
       <div className="absolute top-4 right-4 flex gap-2 items-center z-50">
         <div className="text-white/60 text-xs mr-2">Kiosk: ON</div>
