@@ -14,11 +14,11 @@ interface PendingSignature {
     first_name: string
     last_name: string
     sm_username: string
-  }
+  } | null
   events: {
     id: string
     name: string
-  }
+  } | null
 }
 
 export function CrewAttestPage() {
@@ -104,7 +104,7 @@ export function CrewAttestPage() {
 
     // Update event_guests status
     const sig = signatures.find(s => s.id === signatureId)
-    if (sig) {
+    if (sig && sig.events && sig.guests) {
       await supabase
         .from('event_guests')
         .update({ status: 'verified' })
@@ -166,14 +166,14 @@ export function CrewAttestPage() {
                     <div className="flex-1">
                       <div className="flex items-center gap-3">
                         <span className="font-medium">
-                          {sig.guests.first_name} {sig.guests.last_name}
+                          {sig.guests?.first_name ?? 'Ukjent'} {sig.guests?.last_name ?? ''}
                         </span>
                         <span className="text-sm text-gray-500">
-                          @{sig.guests.sm_username}
+                          @{sig.guests?.sm_username ?? 'ukjent'}
                         </span>
                       </div>
                       <div className="text-sm text-gray-500 mt-1">
-                        {sig.events.name} • Signert {new Date(sig.signed_at).toLocaleString('no-NO')}
+                        {sig.events?.name ?? 'Ukjent event'} • Signert {new Date(sig.signed_at).toLocaleString('no-NO')}
                       </div>
                     </div>
                     <div className="flex items-center gap-3">

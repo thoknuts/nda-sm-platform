@@ -133,7 +133,7 @@ export function RegisterCrewPage() {
             />
 
             <Input
-              label="SpicyMatch brukernavn"
+              label="Brukernavn"
               type="text"
               value={formData.sm_username}
               onChange={(e) => setFormData(prev => ({ ...prev, sm_username: e.target.value.toLowerCase() }))}

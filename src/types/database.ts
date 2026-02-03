@@ -6,7 +6,7 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
-export type UserRole = 'admin' | 'crew'
+export type UserRole = 'admin' | 'crew' | 'organizer'
 export type EventGuestStatus = 'invited' | 'signed_pending_verification' | 'verified'
 export type Language = 'no' | 'en'
 export type PhoneChangeVia = 'kiosk' | 'admin'
@@ -109,8 +109,10 @@ export interface Database {
           id: string
           name: string
           event_date: string
+          end_date: string
           nda_text_no: string
           nda_text_en: string
+          created_by: string | null
           created_at: string
           updated_at: string
         }
@@ -118,8 +120,10 @@ export interface Database {
           id?: string
           name: string
           event_date: string
+          end_date: string
           nda_text_no: string
           nda_text_en: string
+          created_by?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -127,8 +131,10 @@ export interface Database {
           id?: string
           name?: string
           event_date?: string
+          end_date?: string
           nda_text_no?: string
           nda_text_en?: string
+          created_by?: string | null
           created_at?: string
           updated_at?: string
         }

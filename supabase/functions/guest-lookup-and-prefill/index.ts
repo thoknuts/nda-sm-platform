@@ -129,13 +129,31 @@ serve(async (req) => {
       const normalizedUsername = normalizeSmUsername(sm_username)
       const normalizedPhone = normalizePhone(phone)
 
-      // Check if guest exists in guests table by BOTH sm_username AND phone
+      // Check if this phone number is already used by another guest on THIS event
+      const { data: existingEventGuestWithPhone } = await supabaseAdmin
+        .from('event_guests')
+        .select('id, sm_username')
+        .eq('event_id', event_id)
+        .eq('phone', normalizedPhone)
+        .neq('sm_username', normalizedUsername)
+        .limit(1)
+
+      if (existingEventGuestWithPhone && existingEventGuestWithPhone.length > 0) {
+        return new Response(
+          JSON.stringify({ 
+            error: 'Dette mobilnummeret er allerede registrert på dette eventet. Du må legge inn ditt personlige mobilnummer.',
+            phone_already_used: true
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      // Check if guest exists in guests table by phone (for autofill)
       const { data: existingGuest } = await supabaseAdmin
         .from('guests')
         .select('*')
-        .eq('sm_username', normalizedUsername)
         .eq('phone', normalizedPhone)
-        .single()
+        .maybeSingle()
 
       // Check if event_guests has matching sm_username AND phone
       const { data: eventGuests } = await supabaseAdmin
@@ -148,7 +166,7 @@ serve(async (req) => {
 
       const eventGuest = eventGuests?.[0]
 
-      // Only autofill if BOTH username AND phone match in either guests or event_guests
+      // Only autofill if phone matches in either guests or event_guests
       const shouldAutofill = !!existingGuest || !!eventGuest
 
       const prefillData = {

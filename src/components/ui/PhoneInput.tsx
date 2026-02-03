@@ -51,9 +51,11 @@ interface PhoneInputProps {
 }
 
 export function PhoneInput({ value, onChange, language, label, required, error }: PhoneInputProps) {
-  const defaultCode = language === 'no' ? '47' : '45'
+  // Norwegian gets default +47, English gets no default (must choose)
+  const defaultCode = language === 'no' ? '47' : ''
   const [countryCode, setCountryCode] = useState(defaultCode)
   const [localNumber, setLocalNumber] = useState('')
+  const [countryCodeError, setCountryCodeError] = useState('')
 
   useEffect(() => {
     if (value) {
@@ -68,17 +70,32 @@ export function PhoneInput({ value, onChange, language, label, required, error }
   }, [])
 
   useEffect(() => {
-    setCountryCode(language === 'no' ? '47' : '45')
+    // Reset country code when language changes
+    setCountryCode(language === 'no' ? '47' : '')
+    setCountryCodeError('')
   }, [language])
 
   function handleCountryChange(newCode: string) {
     setCountryCode(newCode)
-    onChange(newCode + localNumber)
+    setCountryCodeError('')
+    if (newCode) {
+      onChange(newCode + localNumber)
+    } else {
+      onChange('')
+    }
   }
 
   function handleNumberChange(newNumber: string) {
     const digitsOnly = newNumber.replace(/\D/g, '')
     setLocalNumber(digitsOnly)
+    
+    // Validate country code is selected for English
+    if (!countryCode && language === 'en') {
+      setCountryCodeError(language === 'en' ? 'Please select a country code' : 'Velg landskode')
+      onChange('')
+      return
+    }
+    
     onChange(countryCode + digitsOnly)
   }
 
@@ -96,8 +113,15 @@ export function PhoneInput({ value, onChange, language, label, required, error }
         <select
           value={countryCode}
           onChange={(e) => handleCountryChange(e.target.value)}
-          className="px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm min-w-[120px]"
+          className={`px-3 py-2 border rounded-lg bg-white text-sm min-w-[120px] ${
+            countryCodeError ? 'border-red-500' : 'border-gray-300'
+          }`}
         >
+          {!countryCode && (
+            <option value="">
+              {language === 'en' ? 'Choose' : 'Velg'}
+            </option>
+          )}
           {countryCodes.map(c => (
             <option key={c.code} value={c.code}>
               {c.flag} +{c.code}
@@ -120,6 +144,7 @@ export function PhoneInput({ value, onChange, language, label, required, error }
           {selectedCountry.flag} {selectedCountry.country} (+{selectedCountry.code})
         </p>
       )}
+      {countryCodeError && <p className="text-sm text-red-500">{countryCodeError}</p>}
       {error && <p className="text-sm text-red-500">{error}</p>}
     </div>
   )

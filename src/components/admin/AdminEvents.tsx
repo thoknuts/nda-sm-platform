@@ -8,6 +8,7 @@ interface Event {
   id: string
   name: string
   event_date: string
+  end_date: string
   nda_text_no: string
   nda_text_en: string
   created_at: string
@@ -22,6 +23,7 @@ export function AdminEvents() {
   const [formData, setFormData] = useState({
     name: '',
     event_date: '',
+    end_date: '',
     nda_text_no: '',
     nda_text_en: '',
   })
@@ -31,9 +33,11 @@ export function AdminEvents() {
   }, [])
 
   async function fetchEvents() {
+    const today = new Date().toISOString().split('T')[0]
     const { data } = await supabase
       .from('events')
       .select('*')
+      .gte('end_date', today)
       .order('event_date', { ascending: false })
 
     setEvents((data as Event[]) || [])
@@ -42,7 +46,7 @@ export function AdminEvents() {
 
   function openNewForm() {
     setEditingEvent(null)
-    setFormData({ name: '', event_date: '', nda_text_no: '', nda_text_en: '' })
+    setFormData({ name: '', event_date: '', end_date: '', nda_text_no: '', nda_text_en: '' })
     setShowForm(true)
   }
 
@@ -51,6 +55,7 @@ export function AdminEvents() {
     setFormData({
       name: event.name,
       event_date: event.event_date,
+      end_date: event.end_date,
       nda_text_no: event.nda_text_no,
       nda_text_en: event.nda_text_en,
     })
@@ -89,13 +94,22 @@ export function AdminEvents() {
               onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
               required
             />
-            <Input
-              label="Dato"
-              type="date"
-              value={formData.event_date}
-              onChange={(e) => setFormData(prev => ({ ...prev, event_date: e.target.value }))}
-              required
-            />
+            <div className="grid grid-cols-2 gap-4">
+              <Input
+                label="Startdato"
+                type="date"
+                value={formData.event_date}
+                onChange={(e) => setFormData(prev => ({ ...prev, event_date: e.target.value }))}
+                required
+              />
+              <Input
+                label="Sluttdato"
+                type="date"
+                value={formData.end_date}
+                onChange={(e) => setFormData(prev => ({ ...prev, end_date: e.target.value }))}
+                required
+              />
+            </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 NDA-tekst (Norsk) *
@@ -155,7 +169,7 @@ export function AdminEvents() {
                 <div>
                   <h3 className="font-medium">{event.name}</h3>
                   <p className="text-sm text-gray-500">
-                    {new Date(event.event_date).toLocaleDateString('no-NO')}
+                    {new Date(event.event_date).toLocaleDateString('no-NO')} - {new Date(event.end_date).toLocaleDateString('no-NO')}
                   </p>
                 </div>
                 <Button variant="secondary" onClick={() => openEditForm(event)}>

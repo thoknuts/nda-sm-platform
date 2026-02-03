@@ -46,6 +46,7 @@ const translations = {
     next: 'Neste',
     back: 'Tilbake',
     ndaTitle: 'Taushetserklæring',
+    privacyTitle: 'Personvern',
     readConfirm: 'Jeg har lest og forstått innholdet',
     privacyAccept: 'Jeg aksepterer personvernerklæringen',
     continue: 'Fortsett',
@@ -73,6 +74,7 @@ const translations = {
     next: 'Next',
     back: 'Back',
     ndaTitle: 'Non-Disclosure Agreement',
+    privacyTitle: 'Privacy',
     readConfirm: 'I have read and understood the content',
     privacyAccept: 'I accept the privacy policy',
     continue: 'Continue',
@@ -614,6 +616,13 @@ export function KioskGuestPage() {
                 </p>
               </div>
 
+              <h3 className="text-xl font-bold mb-3">{t.privacyTitle}</h3>
+              <div className="bg-gray-50 p-4 rounded-lg mb-6 max-h-48 overflow-y-auto">
+                <p className="whitespace-pre-wrap text-sm">
+                  {language === 'no' ? appConfig.privacy_text_no : appConfig.privacy_text_en}
+                </p>
+              </div>
+
               <div className="space-y-4 mb-6">
                 <Checkbox
                   label={t.readConfirm}
@@ -757,11 +766,13 @@ export function KioskGuestPage() {
                   type="email"
                   value={formData.email}
                   onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                  required
                 />
                 <Input
                   label={t.location}
                   value={formData.location}
                   onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
+                  required
                 />
               </div>
 
@@ -771,7 +782,7 @@ export function KioskGuestPage() {
                 </Button>
                 <Button
                   onClick={() => setStep('signature')}
-                  disabled={!formData.first_name || !formData.last_name}
+                  disabled={!formData.first_name || !formData.last_name || !formData.email || !formData.location}
                   className="flex-1"
                 >
                   {t.continue}

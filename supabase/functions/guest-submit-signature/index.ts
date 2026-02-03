@@ -32,7 +32,7 @@ serve(async (req) => {
     } = await req.json()
 
     // Validate required fields
-    if (!event_id || !sm_username || !phone || !first_name || !last_name || !language || !signature_png_base64) {
+    if (!event_id || !sm_username || !phone || !first_name || !last_name || !email || !location || !language || !signature_png_base64) {
       return new Response(
         JSON.stringify({ error: 'Mangler påkrevde felt' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -95,20 +95,38 @@ serve(async (req) => {
       )
     }
 
-    // Find event_guests entry by sm_username
-    const { data: eventGuest, error: eventGuestError } = await supabaseAdmin
+    // Find event_guests entry by sm_username (can have multiple entries with same username)
+    const { data: eventGuests, error: eventGuestError } = await supabaseAdmin
       .from('event_guests')
       .select('*')
       .eq('event_id', event_id)
       .eq('sm_username', normalizedUsername)
-      .single()
 
-    if (eventGuestError || !eventGuest) {
+    if (eventGuestError || !eventGuests || eventGuests.length === 0) {
       return new Response(
         JSON.stringify({ error: 'Du er ikke på gjestelisten for dette eventet' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
+
+    // Check if this phone number is already used by another guest on THIS event
+    const { data: existingEventGuestWithPhone } = await supabaseAdmin
+      .from('event_guests')
+      .select('id, sm_username')
+      .eq('event_id', event_id)
+      .eq('phone', normalizedPhone)
+      .neq('sm_username', normalizedUsername)
+      .limit(1)
+
+    if (existingEventGuestWithPhone && existingEventGuestWithPhone.length > 0) {
+      return new Response(
+        JSON.stringify({ error: 'Dette mobilnummeret er allerede registrert på dette eventet. Du må legge inn ditt personlige mobilnummer.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Use the first matching event_guest entry
+    const eventGuest = eventGuests[0]
 
     // Handle phone matching/change
     let guestId: string
@@ -117,16 +135,10 @@ serve(async (req) => {
       .from('guests')
       .select('*')
       .eq('phone', normalizedPhone)
-      .single()
+      .maybeSingle()
 
     if (eventGuest.phone && eventGuest.phone !== normalizedPhone) {
-      // Phone is different from guestlist - check if new phone is globally unique
-      if (existingGuestByPhone) {
-        return new Response(
-          JSON.stringify({ error: 'Dette mobilnummeret er allerede registrert på en annen gjest' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
-      }
+      // Phone is different from guestlist
       phoneChanged = true
     }
 

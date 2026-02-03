@@ -7,8 +7,10 @@ import { AdminGuestlist } from '../components/admin/AdminGuestlist'
 import { AdminCrew } from '../components/admin/AdminCrew'
 import { AdminSignatures } from '../components/admin/AdminSignatures'
 import { AdminSettings } from '../components/admin/AdminSettings'
+import { AdminUsers } from '../components/admin/AdminUsers'
+import { AdminArchive } from '../components/admin/AdminArchive'
 
-type Tab = 'events' | 'guestlist' | 'crew' | 'signatures' | 'settings'
+type Tab = 'events' | 'guestlist' | 'crew' | 'users' | 'signatures' | 'archive' | 'settings'
 
 export function AdminPage() {
   const [activeTab, setActiveTab] = useState<Tab>('events')
@@ -27,7 +29,9 @@ export function AdminPage() {
     { id: 'events', label: 'Eventer' },
     { id: 'guestlist', label: 'Gjestelister' },
     { id: 'crew', label: 'Crew' },
+    { id: 'users', label: 'Brukere' },
     { id: 'signatures', label: 'Signeringer' },
+    { id: 'archive', label: 'Arkiv' },
     { id: 'settings', label: 'Innstillinger' },
   ]
 
@@ -77,7 +81,9 @@ export function AdminPage() {
         {activeTab === 'events' && <AdminEvents />}
         {activeTab === 'guestlist' && <AdminGuestlist />}
         {activeTab === 'crew' && <AdminCrew />}
+        {activeTab === 'users' && <AdminUsers />}
         {activeTab === 'signatures' && <AdminSignatures />}
+        {activeTab === 'archive' && <AdminArchive />}
         {activeTab === 'settings' && <AdminSettings />}
       </main>
     </div>

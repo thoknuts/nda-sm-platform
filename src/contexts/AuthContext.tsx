@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 
 interface Profile {
   user_id: string
-  role: 'admin' | 'crew'
+  role: 'admin' | 'crew' | 'organizer'
   sm_username: string
   full_name: string | null
 }
