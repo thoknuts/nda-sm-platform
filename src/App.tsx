@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { KioskProvider } from './contexts/KioskContext'
+import { DynamicFavicon } from './components/DynamicFavicon'
 import { LoginPage } from './pages/LoginPage'
 import { RegisterCrewPage } from './pages/RegisterCrewPage'
 import { ResetPasswordPage } from './pages/ResetPasswordPage'
@@ -52,6 +53,7 @@ function App() {
     <BrowserRouter>
       <AuthProvider>
         <KioskProvider>
+          <DynamicFavicon />
           <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register/crew" element={<RegisterCrewPage />} />

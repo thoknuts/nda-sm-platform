@@ -26,6 +26,8 @@ interface AppConfig {
   background_color: string
   logo_url: string | null
   logo_width: number
+  background_image_url: string | null
+  favicon_url: string | null
 }
 
 interface GuestFormData {
@@ -425,6 +427,16 @@ export function KioskGuestPage() {
   }
 
   const backgroundColor = appConfig?.background_color || '#581c87'
+  const backgroundImage = appConfig?.background_image_url
+
+  const backgroundStyle = backgroundImage 
+    ? { 
+        backgroundImage: `url(${backgroundImage})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat'
+      }
+    : { backgroundColor }
 
   if (loading) {
     return (
@@ -436,7 +448,7 @@ export function KioskGuestPage() {
 
   if (isLocked) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor }}>
+      <div className="min-h-screen flex items-center justify-center p-4" style={backgroundStyle}>
         <Card className="w-full max-w-md text-center">
           <CardContent>
             <div className="text-6xl mb-4">🔒</div>
@@ -460,7 +472,7 @@ export function KioskGuestPage() {
   const logoWidth = appConfig?.logo_width || 200
 
   return (
-    <div className="min-h-screen p-4 relative flex flex-col items-center justify-center" style={{ backgroundColor }}>
+    <div className="min-h-screen p-4 relative flex flex-col items-center justify-center" style={backgroundStyle}>
       {/* Crew controls - top right corner */}
       <div className="absolute top-4 right-4 flex gap-2 items-center z-50">
         <div className="text-white/60 text-xs mr-2">Kiosk: ON</div>

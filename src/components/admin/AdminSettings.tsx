@@ -15,6 +15,8 @@ interface AppConfig {
   background_color: string
   logo_url: string | null
   logo_width: number
+  background_image_url: string | null
+  favicon_url: string | null
 }
 
 export function AdminSettings() {
@@ -29,9 +31,15 @@ export function AdminSettings() {
     background_color: '#581c87',
     logo_url: null as string | null,
     logo_width: 200,
+    background_image_url: null as string | null,
+    favicon_url: null as string | null,
   })
   const [uploadingLogo, setUploadingLogo] = useState(false)
+  const [uploadingBgImage, setUploadingBgImage] = useState(false)
+  const [uploadingFavicon, setUploadingFavicon] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const bgImageInputRef = useRef<HTMLInputElement>(null)
+  const faviconInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     fetchConfig()
@@ -55,6 +63,8 @@ export function AdminSettings() {
         background_color: cfg.background_color || '#581c87',
         logo_url: cfg.logo_url,
         logo_width: cfg.logo_width || 200,
+        background_image_url: cfg.background_image_url,
+        favicon_url: cfg.favicon_url,
       })
     }
     setLoading(false)
@@ -73,6 +83,8 @@ export function AdminSettings() {
         background_color: formData.background_color,
         logo_url: formData.logo_url,
         logo_width: formData.logo_width,
+        background_image_url: formData.background_image_url,
+        favicon_url: formData.favicon_url,
         privacy_version: (config?.privacy_version || 0) + 1,
       })
       .eq('id', 1)
@@ -125,6 +137,98 @@ export function AdminSettings() {
     }
 
     setFormData(prev => ({ ...prev, logo_url: null }))
+  }
+
+  async function handleBgImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setUploadingBgImage(true)
+
+    const fileExt = file.name.split('.').pop()
+    const fileName = `bg-${Date.now()}.${fileExt}`
+
+    // Delete old background image if exists
+    if (formData.background_image_url) {
+      const oldPath = formData.background_image_url.split('/').pop()
+      if (oldPath) {
+        await supabase.storage.from('logos').remove([oldPath])
+      }
+    }
+
+    const { error } = await supabase.storage
+      .from('logos')
+      .upload(fileName, file, { upsert: true })
+
+    if (!error) {
+      const { data: urlData } = supabase.storage
+        .from('logos')
+        .getPublicUrl(fileName)
+
+      setFormData(prev => ({ ...prev, background_image_url: urlData.publicUrl }))
+    }
+
+    setUploadingBgImage(false)
+    if (bgImageInputRef.current) {
+      bgImageInputRef.current.value = ''
+    }
+  }
+
+  async function handleDeleteBgImage() {
+    if (!formData.background_image_url) return
+
+    const fileName = formData.background_image_url.split('/').pop()
+    if (fileName) {
+      await supabase.storage.from('logos').remove([fileName])
+    }
+
+    setFormData(prev => ({ ...prev, background_image_url: null }))
+  }
+
+  async function handleFaviconUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setUploadingFavicon(true)
+
+    const fileExt = file.name.split('.').pop()
+    const fileName = `favicon-${Date.now()}.${fileExt}`
+
+    // Delete old favicon if exists
+    if (formData.favicon_url) {
+      const oldPath = formData.favicon_url.split('/').pop()
+      if (oldPath) {
+        await supabase.storage.from('logos').remove([oldPath])
+      }
+    }
+
+    const { error } = await supabase.storage
+      .from('logos')
+      .upload(fileName, file, { upsert: true })
+
+    if (!error) {
+      const { data: urlData } = supabase.storage
+        .from('logos')
+        .getPublicUrl(fileName)
+
+      setFormData(prev => ({ ...prev, favicon_url: urlData.publicUrl }))
+    }
+
+    setUploadingFavicon(false)
+    if (faviconInputRef.current) {
+      faviconInputRef.current.value = ''
+    }
+  }
+
+  async function handleDeleteFavicon() {
+    if (!formData.favicon_url) return
+
+    const fileName = formData.favicon_url.split('/').pop()
+    if (fileName) {
+      await supabase.storage.from('logos').remove([fileName])
+    }
+
+    setFormData(prev => ({ ...prev, favicon_url: null }))
   }
 
   if (loading) {
@@ -269,6 +373,104 @@ export function AdminSettings() {
                 type="file"
                 accept="image/*"
                 onChange={handleLogoUpload}
+                className="hidden"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Bakgrunnsbilde
+              </label>
+              {formData.background_image_url ? (
+                <div className="space-y-3">
+                  <div 
+                    className="w-full h-32 rounded-lg bg-cover bg-center border"
+                    style={{ backgroundImage: `url(${formData.background_image_url})` }}
+                  />
+                  <div className="flex gap-2 items-center">
+                    <Button 
+                      variant="secondary" 
+                      onClick={() => bgImageInputRef.current?.click()}
+                    >
+                      Bytt bilde
+                    </Button>
+                    <Button 
+                      variant="secondary" 
+                      onClick={handleDeleteBgImage}
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      Slett bilde
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <Button 
+                    variant="secondary" 
+                    onClick={() => bgImageInputRef.current?.click()}
+                    disabled={uploadingBgImage}
+                  >
+                    {uploadingBgImage ? 'Laster opp...' : 'Last opp bakgrunnsbilde'}
+                  </Button>
+                  <p className="text-xs text-gray-500 mt-1">Bildet vises som cover på alle sider unntatt admin. Hvis ikke lastet opp brukes bakgrunnsfargen.</p>
+                </div>
+              )}
+              <input
+                ref={bgImageInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleBgImageUpload}
+                className="hidden"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Favicon
+              </label>
+              {formData.favicon_url ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <img 
+                      src={formData.favicon_url} 
+                      alt="Favicon" 
+                      className="w-8 h-8 object-contain border rounded"
+                    />
+                    <span className="text-sm text-gray-600">Nåværende favicon</span>
+                  </div>
+                  <div className="flex gap-2 items-center">
+                    <Button 
+                      variant="secondary" 
+                      onClick={() => faviconInputRef.current?.click()}
+                    >
+                      Bytt favicon
+                    </Button>
+                    <Button 
+                      variant="secondary" 
+                      onClick={handleDeleteFavicon}
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      Slett favicon
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <Button 
+                    variant="secondary" 
+                    onClick={() => faviconInputRef.current?.click()}
+                    disabled={uploadingFavicon}
+                  >
+                    {uploadingFavicon ? 'Laster opp...' : 'Last opp favicon'}
+                  </Button>
+                  <p className="text-xs text-gray-500 mt-1">Anbefalt: ICO, PNG eller SVG, 32x32 eller 64x64 px</p>
+                </div>
+              )}
+              <input
+                ref={faviconInputRef}
+                type="file"
+                accept="image/x-icon,image/png,image/svg+xml"
+                onChange={handleFaviconUpload}
                 className="hidden"
               />
             </div>

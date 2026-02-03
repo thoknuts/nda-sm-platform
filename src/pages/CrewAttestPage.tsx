@@ -5,6 +5,9 @@ import { supabase } from '../lib/supabase'
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { Checkbox } from '../components/ui/Checkbox'
+import { AdminStatistics } from '../components/admin/AdminStatistics'
+
+type Tab = 'attest' | 'statistics'
 
 interface PendingSignature {
   id: string
@@ -22,6 +25,7 @@ interface PendingSignature {
 }
 
 export function CrewAttestPage() {
+  const [activeTab, setActiveTab] = useState<Tab>('attest')
   const [signatures, setSignatures] = useState<PendingSignature[]>([])
   const [loading, setLoading] = useState(true)
   const [verifying, setVerifying] = useState<string | null>(null)
@@ -116,12 +120,17 @@ export function CrewAttestPage() {
     setVerifying(null)
   }
 
+  const tabs: { id: Tab; label: string }[] = [
+    { id: 'attest', label: 'Attestering' },
+    { id: 'statistics', label: 'Statistikk' },
+  ]
+
   return (
     <div className="min-h-screen bg-primary p-4">
       <div className="max-w-4xl mx-auto">
         <div className="flex justify-between items-center mb-6">
           <div className="text-white">
-            <h1 className="text-2xl font-bold">ID-attestering</h1>
+            <h1 className="text-2xl font-bold">Crew Dashboard</h1>
             <p className="text-white/80">Logget inn som {profile?.sm_username}</p>
           </div>
           <div className="flex gap-2">
@@ -139,6 +148,26 @@ export function CrewAttestPage() {
           </div>
         </div>
 
+        {/* Tabs */}
+        <div className="flex gap-2 mb-4">
+          {tabs.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                activeTab === tab.id
+                  ? 'bg-white text-primary'
+                  : 'bg-white/20 text-white hover:bg-white/30'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {activeTab === 'statistics' && <AdminStatistics />}
+
+        {activeTab === 'attest' && (
         <Card>
           <CardHeader>
             <CardTitle>Venter på ID-kontroll ({signatures.length})</CardTitle>
@@ -190,6 +219,7 @@ export function CrewAttestPage() {
             )}
           </CardContent>
         </Card>
+        )}
       </div>
     </div>
   )

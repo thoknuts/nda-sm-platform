@@ -9,8 +9,9 @@ import { AdminSignatures } from '../components/admin/AdminSignatures'
 import { AdminSettings } from '../components/admin/AdminSettings'
 import { AdminUsers } from '../components/admin/AdminUsers'
 import { AdminArchive } from '../components/admin/AdminArchive'
+import { AdminStatistics } from '../components/admin/AdminStatistics'
 
-type Tab = 'events' | 'guestlist' | 'crew' | 'users' | 'signatures' | 'archive' | 'settings'
+type Tab = 'events' | 'guestlist' | 'crew' | 'users' | 'signatures' | 'statistics' | 'archive' | 'settings'
 
 export function AdminPage() {
   const [activeTab, setActiveTab] = useState<Tab>('events')
@@ -31,6 +32,7 @@ export function AdminPage() {
     { id: 'crew', label: 'Crew' },
     { id: 'users', label: 'Brukere' },
     { id: 'signatures', label: 'Signeringer' },
+    { id: 'statistics', label: 'Statistikk' },
     { id: 'archive', label: 'Arkiv' },
     { id: 'settings', label: 'Innstillinger' },
   ]
@@ -83,6 +85,7 @@ export function AdminPage() {
         {activeTab === 'crew' && <AdminCrew />}
         {activeTab === 'users' && <AdminUsers />}
         {activeTab === 'signatures' && <AdminSignatures />}
+        {activeTab === 'statistics' && <AdminStatistics />}
         {activeTab === 'archive' && <AdminArchive />}
         {activeTab === 'settings' && <AdminSettings />}
       </main>
