@@ -42,22 +42,23 @@ serve(async (req) => {
       )
     }
 
-    // Check if user is crew or admin
+    // Check if user is crew, organizer or admin
     const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
       .select('role')
       .eq('user_id', user.id)
       .single()
 
-    if (profileError || !profile || !['crew', 'admin'].includes(profile.role)) {
+    if (profileError || !profile || !['crew', 'organizer', 'admin'].includes(profile.role)) {
       return new Response(
-        JSON.stringify({ error: 'Kun crew eller admin kan starte kiosk' }),
+        JSON.stringify({ error: 'Kun crew, organizer eller admin kan starte kiosk' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    // Check if crew has access to this event (admin has access to all)
+    // Check access based on role
     if (profile.role === 'crew') {
+      // Crew needs explicit event access
       const { data: access, error: accessError } = await supabaseAdmin
         .from('crew_event_access')
         .select('id')
@@ -71,7 +72,23 @@ serve(async (req) => {
           { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
       }
+    } else if (profile.role === 'organizer') {
+      // Organizer can only access events they created
+      const { data: eventCheck, error: eventCheckError } = await supabaseAdmin
+        .from('events')
+        .select('id')
+        .eq('id', event_id)
+        .eq('created_by', user.id)
+        .single()
+
+      if (eventCheckError || !eventCheck) {
+        return new Response(
+          JSON.stringify({ error: 'Du har ikke tilgang til dette eventet' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
     }
+    // Admin has access to all events
 
     // Verify event exists
     const { data: event, error: eventError } = await supabaseAdmin

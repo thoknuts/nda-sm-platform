@@ -59,16 +59,16 @@ serve(async (req) => {
       )
     }
 
-    // Check if user is admin or crew
+    // Check if user is admin, organizer or crew
     const { data: profile } = await supabaseAdmin
       .from('profiles')
       .select('role')
       .eq('user_id', user.id)
       .single()
 
-    if (!profile || !['admin', 'crew'].includes(profile.role)) {
+    if (!profile || !['admin', 'organizer', 'crew'].includes(profile.role)) {
       return new Response(
-        JSON.stringify({ error: 'Kun admin eller crew kan generere PDF' }),
+        JSON.stringify({ error: 'Kun admin, organizer eller crew kan generere PDF' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -129,16 +129,27 @@ serve(async (req) => {
 
     // Create PDF
     const pdfDoc = await PDFDocument.create()
-    const page = pdfDoc.addPage([595.28, 841.89]) // A4
     const font = await pdfDoc.embedFont(StandardFonts.Helvetica)
     const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold)
+    
+    const pageWidth = 595.28
+    const pageHeight = 841.89
+    const margin = 50
+    const bottomMargin = 50
+    const maxWidth = pageWidth - (margin * 2)
+    const fontSize = 9
 
-    const { width, height } = page.getSize()
-    let y = height - 50
+    // Helper function to add a new page
+    function addNewPage() {
+      const newPage = pdfDoc.addPage([pageWidth, pageHeight])
+      return { page: newPage, y: pageHeight - margin }
+    }
+
+    let { page, y } = addNewPage()
 
     // Header
     page.drawText('TAUSHETSERKLÆRING / NDA', {
-      x: 50,
+      x: margin,
       y,
       size: 18,
       font: fontBold,
@@ -148,35 +159,33 @@ serve(async (req) => {
 
     // Event info
     const event = signature.events as any
-    page.drawText(`Event: ${sanitizeText(event.name)}`, { x: 50, y, size: 12, font: fontBold })
+    page.drawText(`Event: ${sanitizeText(event.name)}`, { x: margin, y, size: 12, font: fontBold })
     y -= 20
-    page.drawText(`Dato: ${sanitizeText(event.event_date)}`, { x: 50, y, size: 10, font })
+    page.drawText(`Dato: ${sanitizeText(event.event_date)}`, { x: margin, y, size: 10, font })
     y -= 30
 
     // Guest info
     const guest = signature.guests as any
-    page.drawText('Personopplysninger:', { x: 50, y, size: 12, font: fontBold })
+    page.drawText('Personopplysninger:', { x: margin, y, size: 12, font: fontBold })
     y -= 18
-    page.drawText(`Navn: ${sanitizeText(guest.first_name)} ${sanitizeText(guest.last_name)}`, { x: 50, y, size: 10, font })
+    page.drawText(`Navn: ${sanitizeText(guest.first_name)} ${sanitizeText(guest.last_name)}`, { x: margin, y, size: 10, font })
     y -= 15
-    page.drawText(`SpicyMatch brukernavn: ${sanitizeText(guest.sm_username)}`, { x: 50, y, size: 10, font })
+    page.drawText(`SpicyMatch brukernavn: ${sanitizeText(guest.sm_username)}`, { x: margin, y, size: 10, font })
     y -= 15
-    page.drawText(`Mobil: ${sanitizeText(guest.phone)}`, { x: 50, y, size: 10, font })
+    page.drawText(`Mobil: ${sanitizeText(guest.phone)}`, { x: margin, y, size: 10, font })
     y -= 15
-    page.drawText(`E-post: ${sanitizeText(guest.email)}`, { x: 50, y, size: 10, font })
+    page.drawText(`E-post: ${sanitizeText(guest.email)}`, { x: margin, y, size: 10, font })
     y -= 15
-    page.drawText(`Sted: ${sanitizeText(guest.location)}`, { x: 50, y, size: 10, font })
+    page.drawText(`Sted: ${sanitizeText(guest.location)}`, { x: margin, y, size: 10, font })
     y -= 30
 
     // NDA text
-    page.drawText('NDA-tekst:', { x: 50, y, size: 12, font: fontBold })
+    page.drawText('NDA-tekst:', { x: margin, y, size: 12, font: fontBold })
     y -= 18
 
     // Split NDA text into paragraphs (double newlines or single newlines)
     const rawNdaText = signature.nda_text_snapshot || ''
     const paragraphs = rawNdaText.split(/\n\s*\n|\n/).filter((p: string) => p.trim())
-    const maxWidth = width - 100
-    const fontSize = 9
 
     for (const paragraph of paragraphs) {
       // Sanitize paragraph text (remove control chars but keep as single paragraph)
@@ -190,30 +199,45 @@ serve(async (req) => {
         const testLine = line + (line ? ' ' : '') + word
         const textWidth = font.widthOfTextAtSize(testLine, fontSize)
         if (textWidth > maxWidth) {
-          page.drawText(line, { x: 50, y, size: fontSize, font })
+          // Check if we need a new page
+          if (y < bottomMargin + 20) {
+            const result = addNewPage()
+            page = result.page
+            y = result.y
+          }
+          page.drawText(line, { x: margin, y, size: fontSize, font })
           y -= 12
           line = word
-          if (y < 200) break // Leave room for signature
         } else {
           line = testLine
         }
       }
-      if (line && y >= 200) {
-        page.drawText(line, { x: 50, y, size: fontSize, font })
+      if (line) {
+        if (y < bottomMargin + 20) {
+          const result = addNewPage()
+          page = result.page
+          y = result.y
+        }
+        page.drawText(line, { x: margin, y, size: fontSize, font })
         y -= 12
       }
       // Add extra space between paragraphs
       y -= 8
-      if (y < 200) break
     }
 
-    // Confirmations
+    // Confirmations - check if we need a new page
+    if (y < bottomMargin + 150) {
+      const result = addNewPage()
+      page = result.page
+      y = result.y
+    }
+
     y -= 10
-    page.drawText('Bekreftelser:', { x: 50, y, size: 12, font: fontBold })
+    page.drawText('Bekreftelser:', { x: margin, y, size: 12, font: fontBold })
     y -= 18
-    page.drawText(`[X] Lest og forstatt: ${signature.read_confirmed ? 'Ja' : 'Nei'}`, { x: 50, y, size: 10, font })
+    page.drawText(`[X] Lest og forstatt: ${signature.read_confirmed ? 'Ja' : 'Nei'}`, { x: margin, y, size: 10, font })
     y -= 15
-    page.drawText(`[X] Personvern akseptert: ${signature.privacy_accepted ? 'Ja' : 'Nei'} (versjon ${signature.privacy_version})`, { x: 50, y, size: 10, font })
+    page.drawText(`[X] Personvern akseptert: ${signature.privacy_accepted ? 'Ja' : 'Nei'} (versjon ${signature.privacy_version})`, { x: margin, y, size: 10, font })
     y -= 30
 
     // Signature image
@@ -222,24 +246,43 @@ serve(async (req) => {
         const imageBytes = await signatureImage.arrayBuffer()
         const pngImage = await pdfDoc.embedPng(new Uint8Array(imageBytes))
         const imgDims = pngImage.scale(0.5)
+        const imgHeight = Math.min(imgDims.height, 80)
+        const imgWidth = Math.min(imgDims.width, 200)
+        
+        // Check if we need a new page for signature
+        if (y < bottomMargin + imgHeight + 50) {
+          const result = addNewPage()
+          page = result.page
+          y = result.y
+        }
+        
+        page.drawText('Signatur:', { x: margin, y, size: 10, font: fontBold })
+        y -= 15
+        
         page.drawImage(pngImage, {
-          x: 50,
-          y: y - imgDims.height,
-          width: Math.min(imgDims.width, 200),
-          height: Math.min(imgDims.height, 80),
+          x: margin,
+          y: y - imgHeight,
+          width: imgWidth,
+          height: imgHeight,
         })
-        y -= Math.min(imgDims.height, 80) + 20
+        y -= imgHeight + 20
       } catch (e) {
         // Skip if image embedding fails
       }
     }
 
     // Timestamps
+    if (y < bottomMargin + 40) {
+      const result = addNewPage()
+      page = result.page
+      y = result.y
+    }
+    
     y -= 10
-    page.drawText(`Signert: ${new Date(signature.signed_at).toLocaleString('no-NO')}`, { x: 50, y, size: 10, font })
+    page.drawText(`Signert: ${new Date(signature.signed_at).toLocaleString('no-NO')}`, { x: margin, y, size: 10, font })
     y -= 15
     if (signature.verified_at) {
-      page.drawText(`Verifisert: ${new Date(signature.verified_at).toLocaleString('no-NO')}`, { x: 50, y, size: 10, font })
+      page.drawText(`Verifisert: ${new Date(signature.verified_at).toLocaleString('no-NO')}`, { x: margin, y, size: 10, font })
     }
 
     // Generate PDF bytes

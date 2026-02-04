@@ -10,6 +10,7 @@ import { KioskSelectPage } from './pages/KioskSelectPage'
 import { KioskGuestPage } from './pages/KioskGuestPage'
 import { CrewAttestPage } from './pages/CrewAttestPage'
 import { AdminPage } from './pages/AdminPage'
+import { OrganizerPage } from './pages/OrganizerPage'
 import type { ReactNode } from 'react'
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
@@ -42,6 +43,24 @@ function AdminRoute({ children }: { children: ReactNode }) {
   }
 
   if (profile?.role !== 'admin') {
+    return <Navigate to="/kiosk" replace />
+  }
+
+  return <>{children}</>
+}
+
+function OrganizerRoute({ children }: { children: ReactNode }) {
+  const { profile, loading } = useAuth()
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-primary flex items-center justify-center">
+        <div className="text-white text-xl">Laster...</div>
+      </div>
+    )
+  }
+
+  if (profile?.role !== 'organizer') {
     return <Navigate to="/kiosk" replace />
   }
 
@@ -83,6 +102,14 @@ function App() {
                 <AdminRoute>
                   <AdminPage />
                 </AdminRoute>
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/organizer" element={
+              <ProtectedRoute>
+                <OrganizerRoute>
+                  <OrganizerPage />
+                </OrganizerRoute>
               </ProtectedRoute>
             } />
             

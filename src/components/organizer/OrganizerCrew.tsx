@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
+import { useAuth } from '../../contexts/AuthContext'
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card'
 import { Button } from '../ui/Button'
 import { Input } from '../ui/Input'
@@ -16,6 +17,7 @@ interface CrewInvite {
   email: string
   expires_at: string
   used_at: string | null
+  used_by: string | null
   revoked_at: string | null
 }
 
@@ -30,7 +32,7 @@ interface CrewAccess {
   events: { name: string }
 }
 
-export function AdminCrew() {
+export function OrganizerCrew() {
   const [crew, setCrew] = useState<CrewMember[]>([])
   const [invites, setInvites] = useState<CrewInvite[]>([])
   const [events, setEvents] = useState<Event[]>([])
@@ -39,35 +41,61 @@ export function AdminCrew() {
   const [sending, setSending] = useState(false)
   const [selectedCrew, setSelectedCrew] = useState<string | null>(null)
   const [crewAccess, setCrewAccess] = useState<CrewAccess[]>([])
+  const { profile } = useAuth()
 
   useEffect(() => {
     fetchData()
-  }, [])
+  }, [profile])
 
   async function fetchData() {
-    const [crewRes, invitesRes, eventsRes] = await Promise.all([
-      supabase.from('profiles').select('*').eq('role', 'crew'),
-      supabase.from('crew_invites').select('*').order('created_at', { ascending: false }),
-      supabase.from('events').select('id, name').order('event_date', { ascending: false }),
-    ])
+    if (!profile) return
 
-    setCrew((crewRes.data as CrewMember[]) || [])
-    setInvites((invitesRes.data as CrewInvite[]) || [])
-    setEvents((eventsRes.data as Event[]) || [])
+    // Fetch invites created by this organizer
+    const { data: invitesData } = await supabase
+      .from('crew_invites')
+      .select('*')
+      .eq('created_by', profile.user_id)
+      .order('created_at', { ascending: false })
+
+    // Fetch events created by this organizer
+    const { data: eventsData } = await supabase
+      .from('events')
+      .select('id, name')
+      .eq('created_by', profile.user_id)
+      .order('event_date', { ascending: false })
+
+    // Get crew members who registered via organizer's invites (used_by is set when they register)
+    let crewMembers: CrewMember[] = []
+    const usedInvites = invitesData?.filter(inv => inv.used_by) || []
+    
+    if (usedInvites.length > 0) {
+      const crewIds = usedInvites.map(inv => inv.used_by)
+      const { data: crewData } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('role', 'crew')
+        .in('user_id', crewIds)
+
+      crewMembers = (crewData as CrewMember[]) || []
+    }
+
+    setCrew(crewMembers)
+    setInvites((invitesData as CrewInvite[]) || [])
+    setEvents((eventsData as Event[]) || [])
     setLoading(false)
   }
 
   async function handleInvite(e: React.FormEvent) {
     e.preventDefault()
+    if (!profile) return
+    
     setSending(true)
 
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
 
-    const { data: { user } } = await supabase.auth.getUser()
-
     await supabase.from('crew_invites').insert({
       email: inviteEmail.toLowerCase(),
-      created_by: user?.id,
+      created_by: profile.user_id,
       expires_at: expiresAt,
     })
 
@@ -97,11 +125,18 @@ export function AdminCrew() {
   }
 
   async function fetchCrewAccess(userId: string) {
+    if (!profile) return
+    
     setSelectedCrew(userId)
+    
+    // Only show access to organizer's own events
+    const eventIds = events.map(e => e.id)
+    
     const { data } = await supabase
       .from('crew_event_access')
       .select('id, event_id, events:event_id (name)')
       .eq('crew_user_id', userId)
+      .in('event_id', eventIds)
 
     setCrewAccess((data as unknown as CrewAccess[]) || [])
   }
@@ -149,7 +184,7 @@ export function AdminCrew() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Invitasjoner</CardTitle>
+            <CardTitle>Mine invitasjoner</CardTitle>
           </CardHeader>
           <CardContent>
             {invites.length === 0 ? (
@@ -191,13 +226,13 @@ export function AdminCrew() {
       <div className="space-y-4">
         <Card>
           <CardHeader>
-            <CardTitle>Crew-medlemmer ({crew.length})</CardTitle>
+            <CardTitle>Crew med tilgang ({crew.length})</CardTitle>
           </CardHeader>
           <CardContent>
             {loading ? (
               <p className="text-gray-500 text-center py-4">Laster...</p>
             ) : crew.length === 0 ? (
-              <p className="text-gray-500 text-center py-4">Ingen crew</p>
+              <p className="text-gray-500 text-center py-4">Ingen crew har tilgang til dine eventer</p>
             ) : (
               <div className="space-y-2">
                 {crew.map(member => (

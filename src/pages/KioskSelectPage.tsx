@@ -28,7 +28,8 @@ export function KioskSelectPage() {
   async function fetchEvents() {
     if (!profile) return
 
-    let query = supabase.from('events').select('id, name, event_date')
+    const today = new Date().toISOString().split('T')[0]
+    let query = supabase.from('events').select('id, name, event_date').gte('end_date', today)
 
     if (profile.role === 'crew') {
       const { data: access } = await supabase
@@ -106,6 +107,11 @@ export function KioskSelectPage() {
             {profile?.role === 'admin' && (
               <Button variant="secondary" onClick={() => navigate('/admin')}>
                 Admin
+              </Button>
+            )}
+            {profile?.role === 'organizer' && (
+              <Button variant="secondary" onClick={() => navigate('/organizer')}>
+                Organizer
               </Button>
             )}
             <Button variant="secondary" onClick={() => navigate('/crew/attest')}>

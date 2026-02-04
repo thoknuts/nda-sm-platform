@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
+import { useAuth } from '../../contexts/AuthContext'
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card'
 import { Button } from '../ui/Button'
 import { Input } from '../ui/Input'
@@ -12,9 +13,10 @@ interface Event {
   nda_text_no: string
   nda_text_en: string
   created_at: string
+  created_by: string
 }
 
-export function AdminEvents() {
+export function OrganizerEvents() {
   const [events, setEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -27,16 +29,20 @@ export function AdminEvents() {
     nda_text_no: '',
     nda_text_en: '',
   })
+  const { profile } = useAuth()
 
   useEffect(() => {
     fetchEvents()
-  }, [])
+  }, [profile])
 
   async function fetchEvents() {
+    if (!profile) return
+    
     const today = new Date().toISOString().split('T')[0]
     const { data } = await supabase
       .from('events')
       .select('*')
+      .eq('created_by', profile.user_id)
       .gte('end_date', today)
       .order('event_date', { ascending: false })
 
@@ -64,6 +70,8 @@ export function AdminEvents() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (!profile) return
+    
     setSaving(true)
 
     if (editingEvent) {
@@ -71,8 +79,12 @@ export function AdminEvents() {
         .from('events')
         .update(formData)
         .eq('id', editingEvent.id)
+        .eq('created_by', profile.user_id)
     } else {
-      await supabase.from('events').insert(formData)
+      await supabase.from('events').insert({
+        ...formData,
+        created_by: profile.user_id,
+      })
     }
 
     setSaving(false)
@@ -81,13 +93,13 @@ export function AdminEvents() {
   }
 
   async function handleDeleteEvent(eventId: string, eventName: string) {
+    if (!profile) return
     if (!confirm(`Er du sikker på at du vil slette eventet "${eventName}"? Dette vil også slette alle tilknyttede gjestelister og signaturer.`)) return
     
-    // Delete in order: signatures, event_guests, crew_event_access, then event
     await supabase.from('nda_signatures').delete().eq('event_id', eventId)
     await supabase.from('event_guests').delete().eq('event_id', eventId)
     await supabase.from('crew_event_access').delete().eq('event_id', eventId)
-    await supabase.from('events').delete().eq('id', eventId)
+    await supabase.from('events').delete().eq('id', eventId).eq('created_by', profile.user_id)
 
     fetchEvents()
   }
@@ -163,7 +175,7 @@ export function AdminEvents() {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Eventer</CardTitle>
+        <CardTitle>Mine eventer</CardTitle>
         <Button onClick={openNewForm}>+ Nytt event</Button>
       </CardHeader>
       <CardContent>

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
+import { useAuth } from '../../contexts/AuthContext'
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card'
 import { Button } from '../ui/Button'
 import { Input } from '../ui/Input'
@@ -20,7 +21,7 @@ interface EventGuest {
   status: string
 }
 
-export function AdminGuestlist() {
+export function OrganizerGuestlist() {
   const [events, setEvents] = useState<Event[]>([])
   const [selectedEvent, setSelectedEvent] = useState<string>('')
   const [guests, setGuests] = useState<EventGuest[]>([])
@@ -35,10 +36,11 @@ export function AdminGuestlist() {
     phone: '',
     email: '',
   })
+  const { profile } = useAuth()
 
   useEffect(() => {
     fetchEvents()
-  }, [])
+  }, [profile])
 
   useEffect(() => {
     if (selectedEvent) {
@@ -47,12 +49,18 @@ export function AdminGuestlist() {
   }, [selectedEvent])
 
   async function fetchEvents() {
+    if (!profile) return
+    
     const { data } = await supabase
       .from('events')
       .select('id, name')
+      .eq('created_by', profile.user_id)
       .order('event_date', { ascending: false })
 
     setEvents((data as Event[]) || [])
+    if (data && data.length > 0) {
+      setSelectedEvent(data[0].id)
+    }
   }
 
   async function fetchGuests() {
@@ -92,16 +100,8 @@ export function AdminGuestlist() {
       return
     }
 
-    const { error } = await supabase
-      .from('event_guests')
-      .delete()
-      .eq('id', guestId)
-
-    if (error) {
-      alert('Kunne ikke slette gjest: ' + error.message)
-    } else {
-      fetchGuests()
-    }
+    await supabase.from('event_guests').delete().eq('id', guestId)
+    fetchGuests()
   }
 
   async function handleCsvImport() {
@@ -154,14 +154,14 @@ export function AdminGuestlist() {
       }
 
       if (!sm_username) {
-        errors.push(`Linje ${i + 1}: Mangler SpicyMatch brukernavn`)
+        errors.push(`Linje ${i + 1}: Mangler brukernavn`)
         failed++
         continue
       }
 
       const normalized = sm_username.toLowerCase()
       if (!/^[a-z][a-z0-9._-]{2,31}$/.test(normalized)) {
-        errors.push(`Linje ${i + 1}: Ugyldig SpicyMatch brukernavn "${sm_username}"`)
+        errors.push(`Linje ${i + 1}: Ugyldig brukernavn "${sm_username}"`)
         failed++
         continue
       }
@@ -226,7 +226,7 @@ export function AdminGuestlist() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b">
-                        <th className="text-left py-2">SpicyMatch brukernavn</th>
+                        <th className="text-left py-2">Brukernavn</th>
                         <th className="text-left py-2">Navn</th>
                         <th className="text-left py-2">Mobil</th>
                         <th className="text-left py-2">E-post</th>
@@ -352,7 +352,7 @@ export function AdminGuestlist() {
             <CardContent>
               <form onSubmit={handleAddGuest} className="space-y-4">
                 <Input
-                  label="SpicyMatch brukernavn"
+                  label="Brukernavn"
                   value={formData.sm_username}
                   onChange={(e) => setFormData(prev => ({ ...prev, sm_username: e.target.value.toLowerCase() }))}
                   required

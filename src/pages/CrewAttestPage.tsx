@@ -68,6 +68,21 @@ export function CrewAttestPage() {
         setLoading(false)
         return
       }
+    } else if (profile.role === 'organizer') {
+      // Organizer can only see signatures from events they created
+      const { data: events } = await supabase
+        .from('events')
+        .select('id')
+        .eq('created_by', profile.user_id)
+
+      if (events && events.length > 0) {
+        const eventIds = events.map((e: { id: string }) => e.id)
+        query = query.in('event_id', eventIds)
+      } else {
+        setSignatures([])
+        setLoading(false)
+        return
+      }
     }
 
     const { data, error } = await query
@@ -137,6 +152,11 @@ export function CrewAttestPage() {
             <Button variant="secondary" onClick={() => navigate('/kiosk')}>
               Kiosk
             </Button>
+            {profile?.role === 'organizer' && (
+              <Button variant="secondary" onClick={() => navigate('/organizer')}>
+                Organizer
+              </Button>
+            )}
             {profile?.role === 'admin' && (
               <Button variant="secondary" onClick={() => navigate('/admin')}>
                 Admin

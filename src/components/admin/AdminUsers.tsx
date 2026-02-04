@@ -32,7 +32,7 @@ export function AdminUsers() {
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
-      .in('role', ['crew', 'organizer'])
+      .in('role', ['admin', 'crew', 'organizer'])
       .order('created_at', { ascending: false })
 
     if (error) {
@@ -93,6 +93,8 @@ export function AdminUsers() {
 
   const getRoleBadgeColor = (role: UserRole) => {
     switch (role) {
+      case 'admin':
+        return 'bg-red-100 text-red-800'
       case 'organizer':
         return 'bg-purple-100 text-purple-800'
       case 'crew':
@@ -146,7 +148,7 @@ export function AdminUsers() {
             <p className="text-gray-500 text-center py-8">Laster...</p>
           ) : filteredUsers.length === 0 ? (
             <p className="text-gray-500 text-center py-8">
-              {searchTerm ? 'Ingen brukere funnet' : 'Ingen Crew eller Organizer brukere'}
+              {searchTerm ? 'Ingen brukere funnet' : 'Ingen brukere med roller'}
             </p>
           ) : (
             <div className="overflow-x-auto">
@@ -178,6 +180,7 @@ export function AdminUsers() {
                           >
                             <option value="crew">Crew</option>
                             <option value="organizer">Organizer</option>
+                            <option value="admin">Admin</option>
                           </select>
                         ) : (
                           <span className={`text-xs px-2 py-1 rounded ${getRoleBadgeColor(user.role)}`}>
