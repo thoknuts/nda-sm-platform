@@ -72,13 +72,36 @@ export function AdminUsers() {
     setError('')
     setSuccess('')
 
-    const { error } = await supabase.auth.admin.deleteUser(userId)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        setError('Du må være logget inn')
+        setDeleting(null)
+        return
+      }
 
-    if (error) {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-delete-user`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ userId }),
+        }
+      )
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        setError(result.error || 'Kunne ikke slette bruker')
+      } else {
+        setSuccess('Bruker slettet')
+        fetchUsers()
+      }
+    } catch (err) {
       setError('Kunne ikke slette bruker. Prøv igjen eller kontakt systemadministrator.')
-    } else {
-      setSuccess('Bruker slettet')
-      fetchUsers()
     }
     setDeleting(null)
   }

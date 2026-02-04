@@ -19,6 +19,7 @@ interface EventGuest {
   phone: string | null
   email: string | null
   status: string
+  guest_status: string | null
 }
 
 export function OrganizerGuestlist() {
@@ -35,6 +36,7 @@ export function OrganizerGuestlist() {
     last_name: '',
     phone: '',
     email: '',
+    guest_status: 'Par',
   })
   const { profile } = useAuth()
 
@@ -87,10 +89,11 @@ export function OrganizerGuestlist() {
       last_name: formData.last_name || null,
       phone: formData.phone.replace(/\D/g, '') || null,
       email: formData.email || null,
+      guest_status: formData.guest_status || 'Par',
       status: 'invited',
     })
 
-    setFormData({ sm_username: '', first_name: '', last_name: '', phone: '', email: '' })
+    setFormData({ sm_username: '', first_name: '', last_name: '', phone: '', email: '', guest_status: 'Par' })
     setShowAddForm(false)
     fetchGuests()
   }
@@ -230,7 +233,8 @@ export function OrganizerGuestlist() {
                         <th className="text-left py-2">Navn</th>
                         <th className="text-left py-2">Mobil</th>
                         <th className="text-left py-2">E-post</th>
-                        <th className="text-left py-2">Status</th>
+                        <th className="text-left py-2">Gjestestatus</th>
+                        <th className="text-left py-2">Signeringsstatus</th>
                         <th className="text-left py-2"></th>
                       </tr>
                     </thead>
@@ -241,6 +245,17 @@ export function OrganizerGuestlist() {
                           <td className="py-2">{guest.first_name} {guest.last_name}</td>
                           <td className="py-2">{guest.phone || '-'}</td>
                           <td className="py-2">{guest.email || '-'}</td>
+                          <td className="py-2">
+                            <span className={`px-2 py-1 rounded text-xs ${
+                              guest.guest_status === 'VIP' ? 'bg-purple-100 text-purple-800' :
+                              guest.guest_status === 'Par' ? 'bg-pink-100 text-pink-800' :
+                              guest.guest_status === 'Single mann' ? 'bg-blue-100 text-blue-800' :
+                              guest.guest_status === 'Single kvinne' ? 'bg-rose-100 text-rose-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {guest.guest_status || 'Par'}
+                            </span>
+                          </td>
                           <td className="py-2">
                             <span className={`px-2 py-1 rounded text-xs ${
                               guest.status === 'verified' ? 'bg-green-100 text-green-800' :
@@ -381,6 +396,19 @@ export function OrganizerGuestlist() {
                   value={formData.email}
                   onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
                 />
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Gjestestatus</label>
+                  <select
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    value={formData.guest_status}
+                    onChange={(e) => setFormData(prev => ({ ...prev, guest_status: e.target.value }))}
+                  >
+                    <option value="Par">Par</option>
+                    <option value="Single mann">Single mann</option>
+                    <option value="Single kvinne">Single kvinne</option>
+                    <option value="VIP">VIP</option>
+                  </select>
+                </div>
                 <div className="flex gap-3">
                   <Button type="button" variant="secondary" onClick={() => setShowAddForm(false)}>
                     Avbryt
