@@ -24,7 +24,9 @@ export function LoginPage() {
       setError(error)
       setLoading(false)
     } else {
-      navigate('/kiosk')
+      console.log('[Login] Login successful, navigating to /kiosk')
+      setLoading(false)
+      navigate('/kiosk', { replace: true })
     }
   }
 
