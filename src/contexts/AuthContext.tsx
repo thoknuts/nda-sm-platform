@@ -89,6 +89,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function signIn(username: string, password: string): Promise<{ error: string | null }> {
     try {
+      console.log('[Auth] Starting login for:', username)
+      
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/auth-username-login`, {
         method: 'POST',
         headers: {
@@ -99,17 +101,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
 
       const data = await response.json()
+      console.log('[Auth] Login response ok:', response.ok)
 
       if (!response.ok) {
+        console.log('[Auth] Login failed:', data.error)
         return { error: data.error || 'Innlogging feilet' }
       }
 
       if (data.session) {
-        await supabase.auth.setSession(data.session)
+        console.log('[Auth] Setting session...')
+        const { error: setSessionError } = await supabase.auth.setSession(data.session)
+        if (setSessionError) {
+          console.error('[Auth] setSession error:', setSessionError)
+          return { error: 'Kunne ikke sette sesjon: ' + setSessionError.message }
+        }
+        console.log('[Auth] Session set successfully')
+        
+        // Fetch profile after setting session
+        if (data.user?.id) {
+          console.log('[Auth] Fetching profile for user:', data.user.id)
+          await fetchProfile(data.user.id)
+          console.log('[Auth] Profile fetched')
+        }
       }
 
       return { error: null }
     } catch (err) {
+      console.error('[Auth] Login error:', err)
       return { error: 'En feil oppstod ved innlogging' }
     }
   }

@@ -4,21 +4,30 @@ import { supabase } from '../lib/supabase'
 export function DynamicFavicon() {
   useEffect(() => {
     async function loadFavicon() {
-      const { data } = await supabase
-        .from('app_config')
-        .select('favicon_url')
-        .eq('id', 1)
-        .single()
+      try {
+        const { data, error } = await supabase
+          .from('app_config')
+          .select('favicon_url')
+          .eq('id', 1)
+          .single()
 
-      if (data?.favicon_url) {
-        // Update favicon
-        let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement
-        if (!link) {
-          link = document.createElement('link')
-          link.rel = 'icon'
-          document.head.appendChild(link)
+        if (error) {
+          // Silently ignore - favicon_url column may not exist
+          return
         }
-        link.href = data.favicon_url
+
+        if (data?.favicon_url) {
+          // Update favicon
+          let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement
+          if (!link) {
+            link = document.createElement('link')
+            link.rel = 'icon'
+            document.head.appendChild(link)
+          }
+          link.href = data.favicon_url
+        }
+      } catch {
+        // Silently ignore favicon errors
       }
     }
 
