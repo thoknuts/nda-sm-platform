@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
-import { useAuth } from '../../contexts/AuthContext'
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card'
 import { Button } from '../ui/Button'
 import { Input } from '../ui/Input'
@@ -35,7 +34,7 @@ export function AdminSignatures() {
   const [selectedEvent, setSelectedEvent] = useState<string>('')
   const [searchQuery, setSearchQuery] = useState('')
   const [generatingPdf, setGeneratingPdf] = useState<string | null>(null)
-  useAuth() // Ensure user is authenticated
+  const [deleting, setDeleting] = useState<string | null>(null)
 
   useEffect(() => {
     fetchEvents()
@@ -124,6 +123,31 @@ export function AdminSignatures() {
     }
   }
 
+  async function handleDeleteSignature(signatureId: string, guestName: string) {
+    if (!confirm(`Er du sikker på at du vil slette NDA-signeringen for ${guestName}? Dette kan ikke angres.`)) {
+      return
+    }
+
+    setDeleting(signatureId)
+
+    try {
+      const { error } = await supabase
+        .from('nda_signatures')
+        .delete()
+        .eq('id', signatureId)
+
+      if (error) {
+        alert('Kunne ikke slette signering: ' + error.message)
+      } else {
+        fetchSignatures()
+      }
+    } catch (err) {
+      alert('En feil oppstod ved sletting')
+    } finally {
+      setDeleting(null)
+    }
+  }
+
   async function handleExportCsv() {
     const rows = [
       ['SpicyMatch brukernavn', 'Fornavn', 'Etternavn', 'Mobil', 'Event', 'Signert', 'Verifisert', 'Språk'].join(','),
@@ -203,6 +227,7 @@ export function AdminSignatures() {
                   <th className="text-left py-2">Signert</th>
                   <th className="text-left py-2">Status</th>
                   <th className="text-left py-2">PDF</th>
+                  <th className="text-left py-2"></th>
                 </tr>
               </thead>
               <tbody>
@@ -229,6 +254,16 @@ export function AdminSignatures() {
                       >
                         {sig.pdf_storage_path ? 'Åpne' : 'Generer'}
                       </Button>
+                    </td>
+                    <td className="py-2">
+                      <button
+                        onClick={() => handleDeleteSignature(sig.id, `${sig.guests.first_name} ${sig.guests.last_name}`)}
+                        disabled={deleting === sig.id}
+                        className="text-red-600 hover:text-red-800 text-sm disabled:opacity-50"
+                        title="Slett signering"
+                      >
+                        {deleting === sig.id ? 'Sletter...' : 'Slett'}
+                      </button>
                     </td>
                   </tr>
                 ))}

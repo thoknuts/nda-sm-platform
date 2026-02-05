@@ -25,30 +25,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
+  const [initializing, setInitializing] = useState(true)
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
-      setUser(session?.user ?? null)
-      if (session?.user) {
-        fetchProfile(session.user.id)
-      } else {
-        setLoading(false)
-      }
-    })
+    let isMounted = true
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    async function initializeAuth() {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        
+        if (!isMounted) return
+
+        setSession(session)
+        setUser(session?.user ?? null)
+        
+        if (session?.user) {
+          await fetchProfile(session.user.id)
+        }
+      } catch (error) {
+        console.error('Auth initialization error:', error)
+      } finally {
+        if (isMounted) {
+          setLoading(false)
+          setInitializing(false)
+        }
+      }
+    }
+
+    initializeAuth()
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (!isMounted || initializing) return
+      
       setSession(session)
       setUser(session?.user ?? null)
+      
       if (session?.user) {
-        fetchProfile(session.user.id)
+        setLoading(true)
+        await fetchProfile(session.user.id)
+        setLoading(false)
       } else {
         setProfile(null)
-        setLoading(false)
       }
     })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      isMounted = false
+      subscription.unsubscribe()
+    }
   }, [])
 
   async function fetchProfile(userId: string) {
@@ -61,7 +85,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!error && data) {
       setProfile(data as Profile)
     }
-    setLoading(false)
   }
 
   async function signIn(username: string, password: string): Promise<{ error: string | null }> {

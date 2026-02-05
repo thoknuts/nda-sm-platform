@@ -73,9 +73,9 @@ export function AdminUsers() {
     setSuccess('')
 
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
-        setError('Du må være logget inn')
+      const { data: { session }, error: sessionError } = await supabase.auth.refreshSession()
+      if (sessionError || !session) {
+        setError('Sesjonen din har utløpt. Vennligst logg inn på nytt.')
         setDeleting(null)
         return
       }
