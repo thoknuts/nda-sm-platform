@@ -14,7 +14,7 @@ interface AuthContextType {
   session: Session | null
   profile: Profile | null
   loading: boolean
-  signIn: (username: string, password: string) => Promise<{ error: string | null }>
+  signIn: (username: string, password: string) => Promise<{ error: string | null; profile: Profile | null }>
   signOut: () => Promise<void>
 }
 
@@ -90,7 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  async function signIn(username: string, password: string): Promise<{ error: string | null }> {
+  async function signIn(username: string, password: string): Promise<{ error: string | null; profile: Profile | null }> {
     try {
       console.log('[Auth] Starting login for:', username)
       
@@ -108,13 +108,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (!response.ok) {
         console.log('[Auth] Login failed:', data.error)
-        return { error: data.error || 'Innlogging feilet' }
+        return { error: data.error || 'Innlogging feilet', profile: null }
       }
+
+      let userProfile: Profile | null = null
 
       if (data.session) {
         console.log('[Auth] Setting session...')
         
-        // Set user and session directly, then let setSession trigger onAuthStateChange for profile
+        // Set user and session directly
         setUser(data.user)
         setSession(data.session)
         
@@ -128,7 +130,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             .single()
           
           if (!profileError && profileData) {
-            setProfile(profileData as Profile)
+            userProfile = profileData as Profile
+            setProfile(userProfile)
             console.log('[Auth] Profile set:', profileData)
           } else {
             console.error('[Auth] Profile fetch error:', profileError)
@@ -140,10 +143,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log('[Auth] Login complete')
       }
 
-      return { error: null }
+      return { error: null, profile: userProfile }
     } catch (err) {
       console.error('[Auth] Login error:', err)
-      return { error: 'En feil oppstod ved innlogging' }
+      return { error: 'En feil oppstod ved innlogging', profile: null }
     }
   }
 

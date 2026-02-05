@@ -52,7 +52,10 @@ export function AdminPage() {
             <Button variant="secondary" onClick={() => navigate('/crew/attest')}>
               Attestering
             </Button>
-            <Button variant="ghost" className="text-white" onClick={signOut}>
+            <Button variant="ghost" className="text-white" onClick={async () => {
+              await signOut()
+              navigate('/login', { replace: true })
+            }}>
               Logg ut
             </Button>
           </div>

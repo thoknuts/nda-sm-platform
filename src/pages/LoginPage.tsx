@@ -10,7 +10,7 @@ export function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const { signIn } = useAuth()
+  const { signIn, profile } = useAuth()
   const navigate = useNavigate()
 
   async function handleSubmit(e: React.FormEvent) {
@@ -18,15 +18,23 @@ export function LoginPage() {
     setError('')
     setLoading(true)
 
-    const { error } = await signIn(username, password)
+    const { error, profile: userProfile } = await signIn(username, password)
 
     if (error) {
       setError(error)
       setLoading(false)
     } else {
-      console.log('[Login] Login successful, navigating to /kiosk')
       setLoading(false)
-      navigate('/kiosk', { replace: true })
+      // Navigate based on role
+      const role = userProfile?.role || profile?.role
+      console.log('[Login] Login successful, role:', role)
+      if (role === 'admin') {
+        navigate('/admin', { replace: true })
+      } else if (role === 'organizer') {
+        navigate('/organizer', { replace: true })
+      } else {
+        navigate('/kiosk', { replace: true })
+      }
     }
   }
 
