@@ -113,19 +113,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (data.session) {
         console.log('[Auth] Setting session...')
-        const { error: setSessionError } = await supabase.auth.setSession(data.session)
-        if (setSessionError) {
-          console.error('[Auth] setSession error:', setSessionError)
-          return { error: 'Kunne ikke sette sesjon: ' + setSessionError.message }
-        }
-        console.log('[Auth] Session set successfully')
         
-        // Fetch profile after setting session
+        // Set user and session directly, then let setSession trigger onAuthStateChange for profile
+        setUser(data.user)
+        setSession(data.session)
+        
+        // Fetch profile directly
         if (data.user?.id) {
           console.log('[Auth] Fetching profile for user:', data.user.id)
-          await fetchProfile(data.user.id)
-          console.log('[Auth] Profile fetched')
+          const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('user_id', data.user.id)
+            .single()
+          
+          if (!profileError && profileData) {
+            setProfile(profileData as Profile)
+            console.log('[Auth] Profile set:', profileData)
+          } else {
+            console.error('[Auth] Profile fetch error:', profileError)
+          }
         }
+        
+        // Now set the session in supabase client (don't await the state change)
+        supabase.auth.setSession(data.session)
+        console.log('[Auth] Login complete')
       }
 
       return { error: null }
