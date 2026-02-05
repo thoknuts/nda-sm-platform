@@ -55,7 +55,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     initializeAuth()
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('[Auth] onAuthStateChange:', event, 'isInitializing:', isInitializing)
       if (!isMounted) return
       
       // Skip initial session event during initialization
@@ -64,9 +63,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(session)
       setUser(session?.user ?? null)
       
-      if (session?.user) {
+      // Don't fetch profile here during login - signIn handles it
+      if (session?.user && event !== 'SIGNED_IN') {
         await fetchProfile(session.user.id)
-      } else {
+      } else if (!session) {
         setProfile(null)
       }
       setLoading(false)
@@ -92,8 +92,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function signIn(username: string, password: string): Promise<{ error: string | null; profile: Profile | null }> {
     try {
-      console.log('[Auth] Starting login for:', username)
-      
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/auth-username-login`, {
         method: 'POST',
         headers: {
@@ -104,48 +102,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
 
       const data = await response.json()
-      console.log('[Auth] Login response ok:', response.ok)
 
       if (!response.ok) {
-        console.log('[Auth] Login failed:', data.error)
         return { error: data.error || 'Innlogging feilet', profile: null }
       }
 
       let userProfile: Profile | null = null
 
       if (data.session) {
-        console.log('[Auth] Setting session...')
+        // Set the session in supabase client FIRST so RLS policies work
+        await supabase.auth.setSession(data.session)
         
-        // Set user and session directly
-        setUser(data.user)
+        const userId = data.session.user?.id || data.user?.id
+        
+        setUser(data.session.user || data.user)
         setSession(data.session)
         
-        // Fetch profile directly
-        if (data.user?.id) {
-          console.log('[Auth] Fetching profile for user:', data.user.id)
+        // Fetch profile (now RLS will work since session is set)
+        if (userId) {
           const { data: profileData, error: profileError } = await supabase
             .from('profiles')
             .select('*')
-            .eq('user_id', data.user.id)
+            .eq('user_id', userId)
             .single()
           
           if (!profileError && profileData) {
             userProfile = profileData as Profile
             setProfile(userProfile)
-            console.log('[Auth] Profile set:', profileData)
-          } else {
-            console.error('[Auth] Profile fetch error:', profileError)
           }
         }
-        
-        // Now set the session in supabase client (don't await the state change)
-        supabase.auth.setSession(data.session)
-        console.log('[Auth] Login complete')
       }
 
       return { error: null, profile: userProfile }
-    } catch (err) {
-      console.error('[Auth] Login error:', err)
+    } catch {
       return { error: 'En feil oppstod ved innlogging', profile: null }
     }
   }

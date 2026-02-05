@@ -24,6 +24,15 @@ serve(async (req) => {
       )
     }
 
+    // Parse request body first (can only be read once)
+    const { userId } = await req.json()
+    if (!userId) {
+      return new Response(
+        JSON.stringify({ error: 'Missing userId' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     // Create client with user's token to verify they are admin
     const supabaseUser = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, {
       global: { headers: { Authorization: authHeader } }
@@ -49,15 +58,6 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ error: 'Only admins can delete users' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    // Get the user ID to delete from request body
-    const { userId } = await req.json()
-    if (!userId) {
-      return new Response(
-        JSON.stringify({ error: 'Missing userId' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
