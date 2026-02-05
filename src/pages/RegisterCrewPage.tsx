@@ -139,7 +139,7 @@ export function RegisterCrewPage() {
               onChange={(e) => setFormData(prev => ({ ...prev, sm_username: e.target.value.toLowerCase() }))}
               required
               placeholder="ola.nordmann"
-              helpText="3-32 tegn, kun a-z, 0-9, punktum, bindestrek, underscore"
+              helpText="3-32 tegn, kun a-z, 0-9, punktum, bindestrek, underscore, &"
             />
 
             <Input

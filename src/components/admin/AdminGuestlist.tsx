@@ -163,7 +163,7 @@ export function AdminGuestlist() {
       }
 
       const normalized = sm_username.toLowerCase()
-      if (!/^[a-z][a-z0-9._-]{2,31}$/.test(normalized)) {
+      if (!/^[a-z&][a-z0-9._&-]{2,31}$/.test(normalized)) {
         errors.push(`Linje ${i + 1}: Ugyldig SpicyMatch brukernavn "${sm_username}"`)
         failed++
         continue

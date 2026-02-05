@@ -12,24 +12,24 @@ export function validateSmUsername(username: string): { valid: boolean; error?: 
     return { valid: false, error: 'SpicyMatch brukernavn må være 3–32 tegn' }
   }
 
-  // Must start with letter
-  if (!/^[a-z]/.test(normalized)) {
-    return { valid: false, error: 'SpicyMatch brukernavn må starte med en bokstav (a–z)' }
+  // Must start with letter or &
+  if (!/^[a-z&]/.test(normalized)) {
+    return { valid: false, error: 'SpicyMatch brukernavn må starte med en bokstav (a–z) eller &' }
   }
 
-  // Allowed characters only
-  if (!/^[a-z][a-z0-9._-]*$/.test(normalized)) {
-    return { valid: false, error: 'Bruk kun bokstaver (a–z), tall, punktum, bindestrek eller underscore. Ingen mellomrom.' }
+  // Allowed characters only (including &)
+  if (!/^[a-z&][a-z0-9._&-]*$/.test(normalized)) {
+    return { valid: false, error: 'Bruk kun bokstaver (a–z), tall, punktum, bindestrek, underscore eller &. Ingen mellomrom.' }
   }
 
   // No double separators
-  if (/\.\./.test(normalized) || /--/.test(normalized) || /__/.test(normalized)) {
-    return { valid: false, error: 'Ingen doble separatorer (.., --, __) tillatt' }
+  if (/\.\./.test(normalized) || /--/.test(normalized) || /__/.test(normalized) || /&&/.test(normalized)) {
+    return { valid: false, error: 'Ingen doble separatorer (.., --, __, &&) tillatt' }
   }
 
   // Cannot end with separator
-  if (/[._-]$/.test(normalized)) {
-    return { valid: false, error: 'SpicyMatch brukernavn kan ikke slutte med punktum, bindestrek eller underscore' }
+  if (/[._&-]$/.test(normalized)) {
+    return { valid: false, error: 'SpicyMatch brukernavn kan ikke slutte med punktum, bindestrek, underscore eller &' }
   }
 
   // Reserved usernames
