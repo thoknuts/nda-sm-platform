@@ -52,8 +52,10 @@ serve(async (req) => {
     }
 
     // Send password reset email
+    // SITE_URL should be set in Supabase Edge Function secrets, e.g., https://your-app.netlify.app
+    const siteUrl = Deno.env.get('SITE_URL') || 'http://localhost:5173'
     const { error: resetError } = await supabaseAdmin.auth.resetPasswordForEmail(email, {
-      redirectTo: `${Deno.env.get('SITE_URL') || supabaseUrl.replace('.supabase.co', '.vercel.app')}/update-password`,
+      redirectTo: `${siteUrl}/update-password`,
     })
 
     if (resetError) {
