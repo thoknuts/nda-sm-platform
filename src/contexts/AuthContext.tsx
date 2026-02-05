@@ -25,10 +25,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
-  const [initializing, setInitializing] = useState(true)
 
   useEffect(() => {
     let isMounted = true
+    let isInitializing = true
 
     async function initializeAuth() {
       try {
@@ -47,26 +47,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } finally {
         if (isMounted) {
           setLoading(false)
-          setInitializing(false)
+          isInitializing = false
         }
       }
     }
 
     initializeAuth()
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (!isMounted || initializing) return
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('[Auth] onAuthStateChange:', event, 'isInitializing:', isInitializing)
+      if (!isMounted) return
+      
+      // Skip initial session event during initialization
+      if (isInitializing && event === 'INITIAL_SESSION') return
       
       setSession(session)
       setUser(session?.user ?? null)
       
       if (session?.user) {
-        setLoading(true)
         await fetchProfile(session.user.id)
-        setLoading(false)
       } else {
         setProfile(null)
       }
+      setLoading(false)
     })
 
     return () => {
