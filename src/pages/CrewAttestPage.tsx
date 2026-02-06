@@ -48,6 +48,7 @@ export function CrewAttestPage() {
   const [guestFilter, setGuestFilter] = useState('')
   const [loading, setLoading] = useState(true)
   const [verifying, setVerifying] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState<string | null>(null)
   const [error, setError] = useState('')
   const { profile, signOut } = useAuth()
   const navigate = useNavigate()
@@ -190,6 +191,38 @@ export function CrewAttestPage() {
     await fetchPendingSignatures()
     await fetchEventGuests()
     setVerifying(null)
+  }
+
+  async function handleDeleteSignature(signatureId: string) {
+    if (!confirm('Er du sikker på at du vil slette denne signaturen?')) return
+
+    setDeleting(signatureId)
+    setError('')
+
+    // Reset event_guests status back to 'invited'
+    const sig = signatures.find(s => s.id === signatureId)
+    if (sig && sig.events && sig.guests) {
+      await supabase
+        .from('event_guests')
+        .update({ status: 'invited' })
+        .eq('event_id', sig.events.id)
+        .eq('sm_username', sig.guests.sm_username)
+    }
+
+    const { error: deleteError } = await supabase
+      .from('nda_signatures')
+      .delete()
+      .eq('id', signatureId)
+
+    if (deleteError) {
+      setError('Kunne ikke slette signaturen')
+      setDeleting(null)
+      return
+    }
+
+    await fetchPendingSignatures()
+    await fetchEventGuests()
+    setDeleting(null)
   }
 
   const tabs: { id: Tab; label: string }[] = [
@@ -385,8 +418,16 @@ export function CrewAttestPage() {
                             label="ID kontrollert"
                             checked={verifying === sig.id}
                             onChange={() => handleVerify(sig.id)}
-                            disabled={verifying !== null}
+                            disabled={verifying !== null || deleting !== null}
                           />
+                          <button
+                            onClick={() => handleDeleteSignature(sig.id)}
+                            disabled={verifying !== null || deleting !== null}
+                            className="text-red-500 hover:text-red-700 disabled:opacity-50 text-sm px-2 py-1 rounded hover:bg-red-50 transition-colors"
+                            title="Slett signatur"
+                          >
+                            {deleting === sig.id ? '...' : '✕'}
+                          </button>
                         </div>
                       </div>
                     ))}
