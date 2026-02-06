@@ -18,6 +18,7 @@ interface PendingSignature {
     first_name: string
     last_name: string
     sm_username: string
+    phone: string | null
   } | null
   events: {
     id: string
@@ -118,7 +119,7 @@ export function CrewAttestPage() {
         id,
         signed_at,
         language,
-        guests:guest_id (first_name, last_name, sm_username),
+        guests:guest_id (first_name, last_name, sm_username, phone),
         events:event_id (id, name)
       `)
       .eq('event_id', selectedEvent)
@@ -187,6 +188,7 @@ export function CrewAttestPage() {
     }
 
     await fetchPendingSignatures()
+    await fetchEventGuests()
     setVerifying(null)
   }
 
@@ -368,6 +370,11 @@ export function CrewAttestPage() {
                             <span className="text-sm text-gray-500">
                               @{sig.guests?.sm_username ?? 'ukjent'}
                             </span>
+                            {sig.guests?.phone && (
+                              <span className="text-sm text-gray-600">
+                                📞 {sig.guests.phone}
+                              </span>
+                            )}
                           </div>
                           <div className="text-sm text-gray-500 mt-1">
                             {sig.events?.name ?? 'Ukjent event'} • Signert {new Date(sig.signed_at).toLocaleString('no-NO')}
