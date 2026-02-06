@@ -91,52 +91,83 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function signIn(username: string, password: string): Promise<{ error: string | null; profile: Profile | null }> {
-    try {
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/auth-username-login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-        },
-        body: JSON.stringify({ username, password }),
-      })
+    const maxRetries = 2
+    let lastError = ''
 
-      const data = await response.json()
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        const controller = new AbortController()
+        const timeout = setTimeout(() => controller.abort(), 15000)
 
-      if (!response.ok) {
-        return { error: data.error || 'Innlogging feilet', profile: null }
-      }
+        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/auth-username-login`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({ username, password }),
+          signal: controller.signal,
+        })
 
-      let userProfile: Profile | null = null
+        clearTimeout(timeout)
 
-      if (data.session) {
-        // Set the session in supabase client FIRST so RLS policies work
-        await supabase.auth.setSession(data.session)
-        
-        const userId = data.session.user?.id || data.user?.id
-        
-        setUser(data.session.user || data.user)
-        setSession(data.session)
-        
-        // Fetch profile (now RLS will work since session is set)
-        if (userId) {
-          const { data: profileData, error: profileError } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('user_id', userId)
-            .single()
+        const data = await response.json()
+
+        if (!response.ok) {
+          // Don't retry on auth errors (wrong password etc.)
+          if (response.status === 401 || response.status === 403) {
+            return { error: data.error || 'Innlogging feilet', profile: null }
+          }
+          lastError = data.error || 'Innlogging feilet'
+          if (attempt < maxRetries) {
+            await new Promise(r => setTimeout(r, 1500 * (attempt + 1)))
+            continue
+          }
+          return { error: lastError, profile: null }
+        }
+
+        let userProfile: Profile | null = null
+
+        if (data.session) {
+          // Set the session in supabase client FIRST so RLS policies work
+          await supabase.auth.setSession(data.session)
           
-          if (!profileError && profileData) {
-            userProfile = profileData as Profile
-            setProfile(userProfile)
+          const userId = data.session.user?.id || data.user?.id
+          
+          setUser(data.session.user || data.user)
+          setSession(data.session)
+          
+          // Fetch profile (now RLS will work since session is set)
+          if (userId) {
+            const { data: profileData, error: profileError } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('user_id', userId)
+              .single()
+            
+            if (!profileError && profileData) {
+              userProfile = profileData as Profile
+              setProfile(userProfile)
+            }
           }
         }
-      }
 
-      return { error: null, profile: userProfile }
-    } catch {
-      return { error: 'En feil oppstod ved innlogging', profile: null }
+        return { error: null, profile: userProfile }
+      } catch (err) {
+        const isTimeout = err instanceof DOMException && err.name === 'AbortError'
+        lastError = isTimeout
+          ? 'Tjenesten brukte for lang tid. Prøver igjen...'
+          : 'Tilkoblingsproblemer. Prøver igjen...'
+        
+        if (attempt < maxRetries) {
+          await new Promise(r => setTimeout(r, 1500 * (attempt + 1)))
+          continue
+        }
+        return { error: 'Kunne ikke koble til tjenesten. Vennligst prøv igjen om noen sekunder.', profile: null }
+      }
     }
+
+    return { error: lastError || 'En feil oppstod ved innlogging', profile: null }
   }
 
   async function signOut() {
