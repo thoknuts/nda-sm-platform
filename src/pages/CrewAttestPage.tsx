@@ -26,11 +26,14 @@ interface PendingSignature {
   } | null
 }
 
+type GuestType = 'par' | 'single_mann' | 'single_kvinne' | 'vip'
+
 interface EventGuest {
   sm_username: string
   first_name: string | null
   last_name: string | null
   status: 'invited' | 'signed_pending_verification' | 'verified'
+  guest_type: GuestType | null
 }
 
 interface Event {
@@ -139,7 +142,7 @@ export function CrewAttestPage() {
 
     const { data, error } = await supabase
       .from('event_guests')
-      .select('sm_username, first_name, last_name, status')
+      .select('sm_username, first_name, last_name, status, guest_type')
       .eq('event_id', selectedEvent)
       .order('sm_username', { ascending: true })
 
@@ -346,8 +349,26 @@ export function CrewAttestPage() {
                             : 'bg-gray-50 border border-gray-200'
                         }`}
                       >
-                        <div className="font-medium text-gray-900">
-                          @{guest.sm_username}
+                        <div className="flex items-center justify-between">
+                          <div className="font-medium text-gray-900">
+                            @{guest.sm_username}
+                          </div>
+                          {guest.guest_type && (
+                            <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
+                              guest.guest_type === 'vip'
+                                ? 'bg-purple-100 text-purple-700'
+                                : guest.guest_type === 'par'
+                                ? 'bg-blue-100 text-blue-700'
+                                : guest.guest_type === 'single_mann'
+                                ? 'bg-sky-100 text-sky-700'
+                                : 'bg-pink-100 text-pink-700'
+                            }`}>
+                              {guest.guest_type === 'vip' ? 'VIP'
+                                : guest.guest_type === 'par' ? 'Par'
+                                : guest.guest_type === 'single_mann' ? 'Mann'
+                                : 'Kvinne'}
+                            </span>
+                          )}
                         </div>
                         <div className="text-gray-600 text-xs">
                           {guest.first_name || ''} {guest.last_name || ''}

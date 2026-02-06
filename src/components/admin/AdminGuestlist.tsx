@@ -125,6 +125,7 @@ export function AdminGuestlist() {
     const nickIndex = headerParts.indexOf('nick')
     const nameIndex = headerParts.indexOf('name')
     const surnameIndex = headerParts.indexOf('surname')
+    const categoryIndex = headerParts.indexOf('category')
     
     // For simple format: sm_username,first_name,last_name,phone,email
     const isSimpleFormat = headerParts.includes('sm_username') || headerLine.startsWith('sm_username')
@@ -145,15 +146,27 @@ export function AdminGuestlist() {
       let last_name: string | null = null
       let phone: string | null = null
       let email: string | null = null
+      let guest_type: string | null = null
 
       if (isStandardFormat && nickIndex !== -1) {
         // Standard SpicyMatch CSV format: Date;Status;Nick;Category;Name;Surname;...
         sm_username = parts[nickIndex] || ''
         first_name = parts[nameIndex] || null
         last_name = parts[surnameIndex] || null
+        if (categoryIndex !== -1) {
+          const cat = (parts[categoryIndex] || '').toLowerCase().trim()
+          if (cat.includes('couple') || cat.includes('par')) guest_type = 'par'
+          else if (cat.includes('single') && cat.includes('male') || cat.includes('single') && cat.includes('mann')) guest_type = 'single_mann'
+          else if (cat.includes('single') && cat.includes('female') || cat.includes('single') && cat.includes('kvinne')) guest_type = 'single_kvinne'
+          else if (cat.includes('vip')) guest_type = 'vip'
+        }
       } else {
-        // Simple format: sm_username,first_name,last_name,phone,email
-        [sm_username, first_name, last_name, phone, email] = parts as [string, string | null, string | null, string | null, string | null]
+        // Simple format: sm_username,first_name,last_name,phone,email,guest_type
+        const guestTypePart = parts[5]?.trim().toLowerCase() || null
+        ;[sm_username, first_name, last_name, phone, email] = parts as [string, string | null, string | null, string | null, string | null]
+        if (guestTypePart === 'par' || guestTypePart === 'single_mann' || guestTypePart === 'single_kvinne' || guestTypePart === 'vip') {
+          guest_type = guestTypePart
+        }
       }
 
       if (!sm_username) {
@@ -177,6 +190,7 @@ export function AdminGuestlist() {
         phone: phone?.replace(/\D/g, '') || null,
         email: email || null,
         status: 'invited',
+        ...(guest_type ? { guest_type } : {}),
       })
 
       if (error) {

@@ -326,11 +326,12 @@ serve(async (req) => {
       )
     }
 
-    // Update event_guests status
+    // Update event_guests status (match all entries with same username for this event)
     await supabaseAdmin
       .from('event_guests')
       .update({ status: 'signed_pending_verification' })
-      .eq('id', eventGuest.id)
+      .eq('event_id', event_id)
+      .eq('sm_username', normalizedUsername)
 
     // Log the signature
     await supabaseAdmin.from('audit_log').insert({
