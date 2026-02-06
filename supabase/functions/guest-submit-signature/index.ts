@@ -284,21 +284,6 @@ serve(async (req) => {
       )
     }
 
-    // Also check by sm_username via guests table (catches cases with different guest_ids)
-    const { data: existingByUsername } = await supabaseAdmin
-      .from('nda_signatures')
-      .select('id, guests!inner(sm_username)')
-      .eq('event_id', event_id)
-      .eq('guests.sm_username', normalizedUsername)
-      .limit(1)
-
-    if (existingByUsername && existingByUsername.length > 0) {
-      return new Response(
-        JSON.stringify({ error: 'Du har allerede signert NDA for dette eventet' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
     // Store signature PNG in storage
     const signatureBytes = Uint8Array.from(atob(signature_png_base64), c => c.charCodeAt(0))
     const signaturePath = `${event_id}/${guestId}_${Date.now()}.png`
@@ -343,12 +328,12 @@ serve(async (req) => {
       )
     }
 
-    // Update event_guests status (match all entries with same username for this event)
+    // Update event_guests status — match by phone (unique identifier per event)
     await supabaseAdmin
       .from('event_guests')
       .update({ status: 'signed_pending_verification' })
       .eq('event_id', event_id)
-      .eq('sm_username', normalizedUsername)
+      .eq('phone', normalizedPhone)
 
     // Log the signature
     await supabaseAdmin.from('audit_log').insert({
