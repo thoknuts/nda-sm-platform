@@ -281,8 +281,9 @@ serve(async (req) => {
       })
 
     if (uploadError) {
+      console.error('Storage upload error:', uploadError)
       return new Response(
-        JSON.stringify({ error: 'Kunne ikke lagre signatur' }),
+        JSON.stringify({ error: `Kunne ikke lagre signatur: ${uploadError.message}` }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -320,8 +321,9 @@ serve(async (req) => {
       .single()
 
     if (signatureError || !signature) {
+      console.error('Signature record error:', signatureError)
       return new Response(
-        JSON.stringify({ error: 'Kunne ikke lagre signatur-record' }),
+        JSON.stringify({ error: `Kunne ikke lagre signatur-record: ${signatureError?.message || 'unknown'}` }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -350,8 +352,9 @@ serve(async (req) => {
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   } catch (error) {
+    console.error('Unexpected error:', error)
     return new Response(
-      JSON.stringify({ error: 'En feil oppstod' }),
+      JSON.stringify({ error: `En feil oppstod: ${error instanceof Error ? error.message : String(error)}` }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }

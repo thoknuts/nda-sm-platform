@@ -34,6 +34,7 @@ interface EventGuest {
   last_name: string | null
   status: 'invited' | 'signed_pending_verification' | 'verified'
   guest_type: GuestType | null
+  guest_status: string | null
 }
 
 interface Event {
@@ -142,7 +143,7 @@ export function CrewAttestPage() {
 
     const { data, error } = await supabase
       .from('event_guests')
-      .select('sm_username, first_name, last_name, status, guest_type')
+      .select('sm_username, first_name, last_name, status, guest_type, guest_status')
       .eq('event_id', selectedEvent)
       .order('sm_username', { ascending: true })
 
@@ -353,22 +354,15 @@ export function CrewAttestPage() {
                           <div className="font-medium text-gray-900">
                             @{guest.sm_username}
                           </div>
-                          {guest.guest_type && (
-                            <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
-                              guest.guest_type === 'vip'
-                                ? 'bg-purple-100 text-purple-700'
-                                : guest.guest_type === 'par'
-                                ? 'bg-blue-100 text-blue-700'
-                                : guest.guest_type === 'single_mann'
-                                ? 'bg-sky-100 text-sky-700'
-                                : 'bg-pink-100 text-pink-700'
-                            }`}>
-                              {guest.guest_type === 'vip' ? 'VIP'
-                                : guest.guest_type === 'par' ? 'Par'
-                                : guest.guest_type === 'single_mann' ? 'Mann'
-                                : 'Kvinne'}
-                            </span>
-                          )}
+                          <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
+                            guest.guest_status === 'VIP' ? 'bg-purple-100 text-purple-700' :
+                            guest.guest_status === 'Par' ? 'bg-pink-100 text-pink-700' :
+                            guest.guest_status === 'Single mann' ? 'bg-blue-100 text-blue-700' :
+                            guest.guest_status === 'Single kvinne' ? 'bg-rose-100 text-rose-700' :
+                            'bg-gray-100 text-gray-700'
+                          }`}>
+                            {guest.guest_status || 'Par'}
+                          </span>
                         </div>
                         <div className="text-gray-600 text-xs">
                           {guest.first_name || ''} {guest.last_name || ''}
