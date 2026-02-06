@@ -420,14 +420,14 @@ export function CrewAttestPage() {
                             onChange={() => handleVerify(sig.id)}
                             disabled={verifying !== null || deleting !== null}
                           />
-                          <button
+                          <Button
+                            variant="secondary"
                             onClick={() => handleDeleteSignature(sig.id)}
                             disabled={verifying !== null || deleting !== null}
-                            className="text-red-500 hover:text-red-700 disabled:opacity-50 text-sm px-2 py-1 rounded hover:bg-red-50 transition-colors"
-                            title="Slett signatur"
+                            className="!bg-red-100 !text-red-700 hover:!bg-red-200 !border-red-300 !px-3 !py-1 !text-sm"
                           >
-                            {deleting === sig.id ? '...' : '✕'}
-                          </button>
+                            {deleting === sig.id ? 'Sletter...' : 'Slett'}
+                          </Button>
                         </div>
                       </div>
                     ))}
