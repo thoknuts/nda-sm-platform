@@ -160,6 +160,9 @@ export function CrewAttestPage() {
     setVerifying(signatureId)
     setError('')
 
+    const sig = signatures.find(s => s.id === signatureId)
+
+    // Verify this signature
     const { error: updateError, count } = await supabase
       .from('nda_signatures')
       .update({
@@ -182,9 +185,36 @@ export function CrewAttestPage() {
       return
     }
 
-    // Update event_guests status
-    const sig = signatures.find(s => s.id === signatureId)
     if (sig && sig.events && sig.guests) {
+      // Also verify any other pending signatures for the same guest on this event
+      await supabase
+        .from('nda_signatures')
+        .update({
+          verified_at: new Date().toISOString(),
+          verified_by: profile?.user_id,
+        })
+        .eq('event_id', sig.events.id)
+        .eq('guest_id', sig.guests.sm_username) // fallback — actual cleanup below
+        .is('verified_at', null)
+
+      // Find all pending signatures with same sm_username via guests table
+      const otherPending = signatures.filter(
+        s => s.id !== signatureId
+          && s.guests?.sm_username === sig.guests?.sm_username
+          && s.events?.id === sig.events?.id
+      )
+      for (const other of otherPending) {
+        await supabase
+          .from('nda_signatures')
+          .update({
+            verified_at: new Date().toISOString(),
+            verified_by: profile?.user_id,
+          })
+          .eq('id', other.id)
+          .is('verified_at', null)
+      }
+
+      // Update event_guests status
       await supabase
         .from('event_guests')
         .update({ status: 'verified' })

@@ -269,6 +269,36 @@ serve(async (req) => {
       guestId = newGuest.id
     }
 
+    // Check if signature already exists for this event+guest (by guest_id)
+    const { data: existingSignature } = await supabaseAdmin
+      .from('nda_signatures')
+      .select('id')
+      .eq('event_id', event_id)
+      .eq('guest_id', guestId)
+      .single()
+
+    if (existingSignature) {
+      return new Response(
+        JSON.stringify({ error: 'Du har allerede signert NDA for dette eventet' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Also check by sm_username via guests table (catches cases with different guest_ids)
+    const { data: existingByUsername } = await supabaseAdmin
+      .from('nda_signatures')
+      .select('id, guests!inner(sm_username)')
+      .eq('event_id', event_id)
+      .eq('guests.sm_username', normalizedUsername)
+      .limit(1)
+
+    if (existingByUsername && existingByUsername.length > 0) {
+      return new Response(
+        JSON.stringify({ error: 'Du har allerede signert NDA for dette eventet' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     // Store signature PNG in storage
     const signatureBytes = Uint8Array.from(atob(signature_png_base64), c => c.charCodeAt(0))
     const signaturePath = `${event_id}/${guestId}_${Date.now()}.png`
@@ -285,21 +315,6 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ error: `Kunne ikke lagre signatur: ${uploadError.message}` }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    // Check if signature already exists for this event+guest
-    const { data: existingSignature } = await supabaseAdmin
-      .from('nda_signatures')
-      .select('id')
-      .eq('event_id', event_id)
-      .eq('guest_id', guestId)
-      .single()
-
-    if (existingSignature) {
-      return new Response(
-        JSON.stringify({ error: 'Du har allerede signert NDA for dette eventet' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
