@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase'
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { Checkbox } from '../components/ui/Checkbox'
+import { Input } from '../components/ui/Input'
 import { AdminStatistics } from '../components/admin/AdminStatistics'
 
 type Tab = 'attest' | 'statistics'
@@ -24,9 +25,26 @@ interface PendingSignature {
   } | null
 }
 
+interface EventGuest {
+  sm_username: string
+  first_name: string | null
+  last_name: string | null
+  status: 'invited' | 'signed_pending_verification' | 'verified'
+}
+
+interface Event {
+  id: string
+  name: string
+  event_date: string
+}
+
 export function CrewAttestPage() {
   const [activeTab, setActiveTab] = useState<Tab>('attest')
+  const [events, setEvents] = useState<Event[]>([])
+  const [selectedEvent, setSelectedEvent] = useState<string | null>(null)
   const [signatures, setSignatures] = useState<PendingSignature[]>([])
+  const [guests, setGuests] = useState<EventGuest[]>([])
+  const [guestFilter, setGuestFilter] = useState('')
   const [loading, setLoading] = useState(true)
   const [verifying, setVerifying] = useState<string | null>(null)
   const [error, setError] = useState('')
@@ -34,25 +52,31 @@ export function CrewAttestPage() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    fetchPendingSignatures()
-    const interval = setInterval(fetchPendingSignatures, 10000)
-    return () => clearInterval(interval)
+    fetchEvents()
   }, [profile])
 
-  async function fetchPendingSignatures() {
+  useEffect(() => {
+    if (selectedEvent) {
+      fetchPendingSignatures()
+      fetchEventGuests()
+      const interval = setInterval(() => {
+        fetchPendingSignatures()
+        fetchEventGuests()
+      }, 10000)
+      return () => clearInterval(interval)
+    } else {
+      setSignatures([])
+      setGuests([])
+    }
+  }, [selectedEvent, profile])
+
+  async function fetchEvents() {
     if (!profile) return
 
     let query = supabase
-      .from('nda_signatures')
-      .select(`
-        id,
-        signed_at,
-        language,
-        guests:guest_id (first_name, last_name, sm_username),
-        events:event_id (id, name)
-      `)
-      .is('verified_at', null)
-      .order('signed_at', { ascending: true })
+      .from('events')
+      .select('id, name, event_date')
+      .order('event_date', { ascending: false })
 
     if (profile.role === 'crew') {
       const { data: access } = await supabase
@@ -62,38 +86,69 @@ export function CrewAttestPage() {
 
       if (access && access.length > 0) {
         const eventIds = access.map((a: { event_id: string }) => a.event_id)
-        query = query.in('event_id', eventIds)
+        query = query.in('id', eventIds)
       } else {
-        setSignatures([])
+        setEvents([])
         setLoading(false)
         return
       }
     } else if (profile.role === 'organizer') {
-      // Organizer can only see signatures from events they created
-      const { data: events } = await supabase
-        .from('events')
-        .select('id')
-        .eq('created_by', profile.user_id)
-
-      if (events && events.length > 0) {
-        const eventIds = events.map((e: { id: string }) => e.id)
-        query = query.in('event_id', eventIds)
-      } else {
-        setSignatures([])
-        setLoading(false)
-        return
-      }
+      query = query.eq('created_by', profile.user_id)
     }
+    // Admin sees all events
 
     const { data, error } = await query
+
+    if (!error && data) {
+      setEvents(data as Event[])
+      // Auto-select first event if only one
+      if (data.length === 1) {
+        setSelectedEvent(data[0].id)
+      }
+    }
+    setLoading(false)
+  }
+
+  async function fetchPendingSignatures() {
+    if (!profile || !selectedEvent) return
+
+    const { data, error } = await supabase
+      .from('nda_signatures')
+      .select(`
+        id,
+        signed_at,
+        language,
+        guests:guest_id (first_name, last_name, sm_username),
+        events:event_id (id, name)
+      `)
+      .eq('event_id', selectedEvent)
+      .is('verified_at', null)
+      .order('signed_at', { ascending: true })
 
     if (error) {
       console.error('Error fetching signatures:', error)
     } else {
       setSignatures((data as unknown as PendingSignature[]) || [])
     }
-    setLoading(false)
   }
+
+  async function fetchEventGuests() {
+    if (!profile || !selectedEvent) return
+
+    const { data, error } = await supabase
+      .from('event_guests')
+      .select('sm_username, first_name, last_name, status')
+      .eq('event_id', selectedEvent)
+      .order('sm_username', { ascending: true })
+
+    if (!error && data) {
+      setGuests(data as EventGuest[])
+    }
+  }
+
+  const filteredGuests = guests.filter(g =>
+    g.sm_username.toLowerCase().includes(guestFilter.toLowerCase())
+  )
 
   async function handleVerify(signatureId: string) {
     setVerifying(signatureId)
@@ -142,7 +197,7 @@ export function CrewAttestPage() {
 
   return (
     <div className="min-h-screen bg-primary p-4">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-6xl mx-auto">
         <div className="flex justify-between items-center mb-6">
           <div className="text-white">
             <h1 className="text-2xl font-bold">Crew Dashboard</h1>
@@ -191,57 +246,150 @@ export function CrewAttestPage() {
         {activeTab === 'statistics' && <AdminStatistics />}
 
         {activeTab === 'attest' && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Venter på ID-kontroll ({signatures.length})</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
-                {error}
-              </div>
-            )}
-
-            {loading ? (
-              <div className="text-center py-8 text-gray-500">Laster...</div>
-            ) : signatures.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                Ingen signaturer venter på verifisering
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {signatures.map(sig => (
-                  <div
-                    key={sig.id}
-                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
+          <>
+            {/* Event-velger */}
+            <Card className="mb-4">
+              <CardContent className="py-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Velg arrangement
+                </label>
+                {loading ? (
+                  <div className="text-gray-500">Laster arrangementer...</div>
+                ) : events.length === 0 ? (
+                  <div className="text-gray-500">Ingen arrangementer tilgjengelig</div>
+                ) : (
+                  <select
+                    value={selectedEvent || ''}
+                    onChange={(e) => setSelectedEvent(e.target.value || null)}
+                    className="w-full md:w-auto min-w-[300px] px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                   >
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3">
-                        <span className="font-medium">
-                          {sig.guests?.first_name ?? 'Ukjent'} {sig.guests?.last_name ?? ''}
-                        </span>
-                        <span className="text-sm text-gray-500">
-                          @{sig.guests?.sm_username ?? 'ukjent'}
-                        </span>
-                      </div>
-                      <div className="text-sm text-gray-500 mt-1">
-                        {sig.events?.name ?? 'Ukjent event'} • Signert {new Date(sig.signed_at).toLocaleString('no-NO')}
-                      </div>
+                    <option value="">-- Velg arrangement --</option>
+                    {events.map(event => (
+                      <option key={event.id} value={event.id}>
+                        {event.name} ({new Date(event.event_date).toLocaleDateString('no-NO')})
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </CardContent>
+            </Card>
+
+            {!selectedEvent ? (
+              <Card>
+                <CardContent className="py-8 text-center text-gray-500">
+                  Velg et arrangement for å se gjesteliste og attestering
+                </CardContent>
+              </Card>
+            ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              {/* Gjesteliste - venstre side */}
+              <Card className="lg:col-span-1">
+                <CardHeader>
+                  <CardTitle>Gjesteliste ({guests.length})</CardTitle>
+                </CardHeader>
+              <CardContent>
+                <Input
+                  placeholder="Søk på brukernavn..."
+                  value={guestFilter}
+                  onChange={(e) => setGuestFilter(e.target.value)}
+                  className="mb-3"
+                />
+                <div className="space-y-1 max-h-[60vh] overflow-y-auto">
+                  {filteredGuests.length === 0 ? (
+                    <div className="text-center py-4 text-gray-500 text-sm">
+                      {guestFilter ? 'Ingen treff' : 'Ingen gjester'}
                     </div>
-                    <div className="flex items-center gap-3">
-                      <Checkbox
-                        label="ID kontrollert"
-                        checked={verifying === sig.id}
-                        onChange={() => handleVerify(sig.id)}
-                        disabled={verifying !== null}
-                      />
-                    </div>
+                  ) : (
+                    filteredGuests.map((guest, idx) => (
+                      <div
+                        key={`${guest.sm_username}-${idx}`}
+                        className={`p-2 rounded-lg text-sm ${
+                          guest.status === 'verified'
+                            ? 'bg-green-100 border border-green-300'
+                            : guest.status === 'signed_pending_verification'
+                            ? 'bg-yellow-50 border border-yellow-200'
+                            : 'bg-gray-50 border border-gray-200'
+                        }`}
+                      >
+                        <div className="font-medium text-gray-900">
+                          @{guest.sm_username}
+                        </div>
+                        <div className="text-gray-600 text-xs">
+                          {guest.first_name || ''} {guest.last_name || ''}
+                        </div>
+                        <div className="text-xs mt-1">
+                          {guest.status === 'verified' && (
+                            <span className="text-green-700">✓ Verifisert</span>
+                          )}
+                          {guest.status === 'signed_pending_verification' && (
+                            <span className="text-yellow-700">⏳ Venter på ID-kontroll</span>
+                          )}
+                          {guest.status === 'invited' && (
+                            <span className="text-gray-500">Ikke signert</span>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Attestering - høyre side */}
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <CardTitle>Venter på ID-kontroll ({signatures.length})</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {error && (
+                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
+                    {error}
                   </div>
-                ))}
-              </div>
+                )}
+
+                {loading ? (
+                  <div className="text-center py-8 text-gray-500">Laster...</div>
+                ) : signatures.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    Ingen signaturer venter på verifisering
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {signatures.map(sig => (
+                      <div
+                        key={sig.id}
+                        className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
+                      >
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3">
+                            <span className="font-medium">
+                              {sig.guests?.first_name ?? 'Ukjent'} {sig.guests?.last_name ?? ''}
+                            </span>
+                            <span className="text-sm text-gray-500">
+                              @{sig.guests?.sm_username ?? 'ukjent'}
+                            </span>
+                          </div>
+                          <div className="text-sm text-gray-500 mt-1">
+                            {sig.events?.name ?? 'Ukjent event'} • Signert {new Date(sig.signed_at).toLocaleString('no-NO')}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <Checkbox
+                            label="ID kontrollert"
+                            checked={verifying === sig.id}
+                            onChange={() => handleVerify(sig.id)}
+                            disabled={verifying !== null}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
             )}
-          </CardContent>
-        </Card>
+          </>
         )}
       </div>
     </div>
