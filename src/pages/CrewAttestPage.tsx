@@ -186,13 +186,14 @@ export function CrewAttestPage() {
       return
     }
 
-    // Update event_guests status — match by phone (unique identifier)
-    if (sig && sig.events && sig.guests?.phone) {
+    // Update event_guests status — match by sm_username + first_name
+    if (sig && sig.events && sig.guests) {
       await supabase
         .from('event_guests')
         .update({ status: 'verified' })
         .eq('event_id', sig.events.id)
-        .eq('phone', sig.guests.phone)
+        .eq('sm_username', sig.guests.sm_username)
+        .eq('first_name', sig.guests.first_name)
     }
 
     await fetchPendingSignatures()
@@ -208,12 +209,13 @@ export function CrewAttestPage() {
 
     // Reset event_guests status back to 'invited'
     const sig = signatures.find(s => s.id === signatureId)
-    if (sig && sig.events && sig.guests?.phone) {
+    if (sig && sig.events && sig.guests) {
       await supabase
         .from('event_guests')
         .update({ status: 'invited' })
         .eq('event_id', sig.events.id)
-        .eq('phone', sig.guests.phone)
+        .eq('sm_username', sig.guests.sm_username)
+        .eq('first_name', sig.guests.first_name)
     }
 
     const { error: deleteError } = await supabase

@@ -328,12 +328,13 @@ serve(async (req) => {
       )
     }
 
-    // Update event_guests status — match by phone (unique identifier per event)
+    // Update event_guests status — match by sm_username + first_name
     await supabaseAdmin
       .from('event_guests')
       .update({ status: 'signed_pending_verification' })
       .eq('event_id', event_id)
-      .eq('phone', normalizedPhone)
+      .eq('sm_username', normalizedUsername)
+      .eq('first_name', first_name)
 
     // Log the signature
     await supabaseAdmin.from('audit_log').insert({
